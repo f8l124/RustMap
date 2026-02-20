@@ -93,6 +93,29 @@ jobs:
       - name: Test
         run: cargo test --workspace --exclude rustmap-gui --exclude rustmap-python
 
+  test-macos:
+    name: Test (macOS)
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install libpcap
+        run: brew install libpcap
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Clippy
+        run: cargo clippy --workspace --exclude rustmap-gui --exclude rustmap-python -- -D warnings
+
+      - name: Test
+        run: cargo test --workspace --exclude rustmap-gui --exclude rustmap-python
+
   gui-check:
     name: GUI build check
     runs-on: windows-latest
