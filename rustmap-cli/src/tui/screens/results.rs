@@ -244,9 +244,10 @@ fn render_detail(
     }
 
     // TLS info for selected port
-    if let Some(idx) = selected_port_idx {
-        if let Some(port) = ports.get(idx) {
-            if let Some(ref tls) = port.tls_info {
+    if let Some(idx) = selected_port_idx
+        && let Some(port) = ports.get(idx)
+    {
+        if let Some(ref tls) = port.tls_info {
                 lines.push(Line::from(""));
                 lines.push(Line::from(Span::styled(
                     format!("=== TLS Info ({}/{}) ===", port.number, port.protocol),
@@ -287,35 +288,34 @@ fn render_detail(
                 }
             }
 
-            // Script results for selected port
-            if !port.script_results.is_empty() {
-                lines.push(Line::from(""));
-                lines.push(Line::from(Span::styled(
-                    "=== Scripts ===",
-                    theme::TEXT_BOLD,
-                )));
-                for sr in &port.script_results {
-                    lines.push(Line::from(format!("  {}: {}", sr.id, sr.output)));
-                }
+        // Script results for selected port
+        if !port.script_results.is_empty() {
+            lines.push(Line::from(""));
+            lines.push(Line::from(Span::styled(
+                "=== Scripts ===",
+                theme::TEXT_BOLD,
+            )));
+            for sr in &port.script_results {
+                lines.push(Line::from(format!("  {}: {}", sr.id, sr.output)));
             }
         }
     }
 
     // OS fingerprint
-    if let Some(ref os) = host.os_fingerprint {
-        if let Some(ref family) = os.os_family {
-            lines.push(Line::from(""));
-            lines.push(Line::from(Span::styled(
-                "=== OS Fingerprint ===",
-                theme::TEXT_BOLD,
-            )));
-            let generation = os.os_generation.as_deref().unwrap_or("");
-            let acc = os.accuracy.map(|a| format!(" ({a}%)")).unwrap_or_default();
-            lines.push(Line::from(Span::styled(
-                format!("  {family} {generation}{acc}"),
-                theme::TEXT_OS,
-            )));
-        }
+    if let Some(ref os) = host.os_fingerprint
+        && let Some(ref family) = os.os_family
+    {
+        lines.push(Line::from(""));
+        lines.push(Line::from(Span::styled(
+            "=== OS Fingerprint ===",
+            theme::TEXT_BOLD,
+        )));
+        let generation = os.os_generation.as_deref().unwrap_or("");
+        let acc = os.accuracy.map(|a| format!(" ({a}%)")).unwrap_or_default();
+        lines.push(Line::from(Span::styled(
+            format!("  {family} {generation}{acc}"),
+            theme::TEXT_OS,
+        )));
     }
 
     // Traceroute

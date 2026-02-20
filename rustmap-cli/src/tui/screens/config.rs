@@ -161,6 +161,7 @@ pub fn apply_to_config(state: &ConfigScreenState, config: &mut ScanConfig) -> Re
 // Rendering
 // ---------------------------------------------------------------------------
 
+#[allow(clippy::vec_init_then_push)]
 pub fn render(frame: &mut ratatui::Frame, area: Rect, state: &mut ConfigScreenState) {
     let block = Block::default()
         .borders(Borders::ALL)
@@ -330,10 +331,10 @@ pub fn handle_key(
         }
         KeyCode::Char(c) if is_text_field(state.focused_field) => {
             if is_numeric_field(state.focused_field) {
-                if c.is_ascii_digit() {
-                    if let Some(field) = active_text_mut(state) {
-                        field.push(c);
-                    }
+                if c.is_ascii_digit()
+                    && let Some(field) = active_text_mut(state)
+                {
+                    field.push(c);
                 }
             } else if let Some(field) = active_text_mut(state) {
                 field.push(c);
@@ -551,7 +552,7 @@ fn toggle_field(label: &str, checked: bool, focused: bool) -> Line<'static> {
 
 fn parse_targets(input: &str) -> Result<Vec<Host>, String> {
     let mut hosts = Vec::new();
-    for token in input.split(|c: char| c == ',' || c == ';') {
+    for token in input.split([',', ';']) {
         let token = token.trim();
         if token.is_empty() {
             continue;

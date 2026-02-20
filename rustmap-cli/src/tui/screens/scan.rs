@@ -205,22 +205,22 @@ fn render_port_detail(frame: &mut ratatui::Frame, area: Rect, state: &ScanScreen
         frame.render_widget(table, area);
 
         // OS info
-        if let Some(ref os) = host.os_fingerprint {
-            if let Some(ref family) = os.os_family {
-                let generation = os.os_generation.as_deref().unwrap_or("");
-                let acc = os.accuracy.map(|a| format!(" ({a}%)")).unwrap_or_default();
-                let os_line = format!("OS: {family} {generation}{acc}");
-                let os_area = Rect {
-                    x: area.x + 1,
-                    y: area.y + area.height.saturating_sub(2),
-                    width: area.width.saturating_sub(2),
-                    height: 1,
-                };
-                frame.render_widget(
-                    Paragraph::new(os_line).style(theme::TEXT_OS),
-                    os_area,
-                );
-            }
+        if let Some(ref os) = host.os_fingerprint
+            && let Some(ref family) = os.os_family
+        {
+            let generation = os.os_generation.as_deref().unwrap_or("");
+            let acc = os.accuracy.map(|a| format!(" ({a}%)")).unwrap_or_default();
+            let os_line = format!("OS: {family} {generation}{acc}");
+            let os_area = Rect {
+                x: area.x + 1,
+                y: area.y + area.height.saturating_sub(2),
+                width: area.width.saturating_sub(2),
+                height: 1,
+            };
+            frame.render_widget(
+                Paragraph::new(os_line).style(theme::TEXT_OS),
+                os_area,
+            );
         }
     } else {
         let msg = Paragraph::new("No host selected")

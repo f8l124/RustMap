@@ -248,6 +248,7 @@ impl Default for ResultsScreenState {
     }
 }
 
+#[derive(Default)]
 pub struct HistoryScreenState {
     pub scans: Vec<rustmap_db::ScanSummary>,
     pub table_state: TableState,
@@ -257,27 +258,9 @@ pub struct HistoryScreenState {
     pub show_diff: bool,
 }
 
-impl Default for HistoryScreenState {
-    fn default() -> Self {
-        Self {
-            scans: Vec::new(),
-            table_state: TableState::default(),
-            loaded: false,
-            diff_first: None,
-            diff_result: None,
-            show_diff: false,
-        }
-    }
-}
-
+#[derive(Default)]
 pub struct HelpScreenState {
     pub scroll: u16,
-}
-
-impl Default for HelpScreenState {
-    fn default() -> Self {
-        Self { scroll: 0 }
-    }
 }
 
 pub struct ConfigScreenState {
@@ -444,10 +427,10 @@ impl App {
                 self.scan_tx = None;
                 self.screen = Screen::Results;
                 self.results_state = ResultsScreenState::default();
-                if let Some(ref r) = self.scan_result {
-                    if !r.hosts.is_empty() {
-                        self.results_state.host_table_state.select(Some(0));
-                    }
+                if let Some(ref r) = self.scan_result
+                    && !r.hosts.is_empty()
+                {
+                    self.results_state.host_table_state.select(Some(0));
                 }
             }
             ScanEvent::Error(msg) => {
@@ -530,25 +513,25 @@ impl App {
                 }
             }
             Action::LoadScan(scan_id) => {
-                if let Some(ref db) = self.db {
-                    if let Ok(Some(result)) = db.load_scan(&scan_id) {
-                        self.scan_result = Some(result);
-                        self.results_state = ResultsScreenState::default();
-                        if let Some(ref r) = self.scan_result {
-                            if !r.hosts.is_empty() {
-                                self.results_state.host_table_state.select(Some(0));
-                            }
-                        }
-                        self.switch_screen(Screen::Results);
+                if let Some(ref db) = self.db
+                    && let Ok(Some(result)) = db.load_scan(&scan_id)
+                {
+                    self.scan_result = Some(result);
+                    self.results_state = ResultsScreenState::default();
+                    if let Some(ref r) = self.scan_result
+                        && !r.hosts.is_empty()
+                    {
+                        self.results_state.host_table_state.select(Some(0));
                     }
+                    self.switch_screen(Screen::Results);
                 }
             }
             Action::DiffScans(old_id, new_id) => {
-                if let Some(ref db) = self.db {
-                    if let Ok(diff) = db.diff_scans(&old_id, &new_id) {
-                        self.history_state.diff_result = Some(diff);
-                        self.history_state.show_diff = true;
-                    }
+                if let Some(ref db) = self.db
+                    && let Ok(diff) = db.diff_scans(&old_id, &new_id)
+                {
+                    self.history_state.diff_result = Some(diff);
+                    self.history_state.show_diff = true;
                 }
             }
         }
@@ -556,12 +539,12 @@ impl App {
 
     fn switch_screen(&mut self, screen: Screen) {
         if screen == Screen::History && !self.history_state.loaded {
-            if let Some(ref db) = self.db {
-                if let Ok(scans) = db.list_scans() {
-                    self.history_state.scans = scans;
-                    if !self.history_state.scans.is_empty() {
-                        self.history_state.table_state.select(Some(0));
-                    }
+            if let Some(ref db) = self.db
+                && let Ok(scans) = db.list_scans()
+            {
+                self.history_state.scans = scans;
+                if !self.history_state.scans.is_empty() {
+                    self.history_state.table_state.select(Some(0));
                 }
             }
             self.history_state.loaded = true;

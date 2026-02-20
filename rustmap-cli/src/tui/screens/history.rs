@@ -66,10 +66,10 @@ pub fn render(
     frame.render_stateful_widget(table, area, &mut state.table_state);
 
     // Diff overlay
-    if state.show_diff {
-        if let Some(ref diff) = state.diff_result {
-            render_diff_overlay(frame, area, diff);
-        }
+    if state.show_diff
+        && let Some(ref diff) = state.diff_result
+    {
+        render_diff_overlay(frame, area, diff);
     }
 }
 
@@ -114,33 +114,33 @@ pub fn handle_key(
             }
         }
         KeyCode::Enter => {
-            if let Some(idx) = state.table_state.selected() {
-                if let Some(scan) = state.scans.get(idx) {
-                    actions.push(Action::LoadScan(scan.scan_id.clone()));
-                }
+            if let Some(idx) = state.table_state.selected()
+                && let Some(scan) = state.scans.get(idx)
+            {
+                actions.push(Action::LoadScan(scan.scan_id.clone()));
             }
         }
         KeyCode::Char('d') => {
-            if let Some(idx) = state.table_state.selected() {
-                if let Some(scan) = state.scans.get(idx) {
-                    if let Some(ref first_id) = state.diff_first.clone() {
-                        // Second scan selected — perform diff via action
-                        let second_id = scan.scan_id.clone();
-                        actions.push(Action::DiffScans(first_id.clone(), second_id));
-                    } else {
-                        state.diff_first = Some(scan.scan_id.clone());
-                    }
+            if let Some(idx) = state.table_state.selected()
+                && let Some(scan) = state.scans.get(idx)
+            {
+                if let Some(ref first_id) = state.diff_first.clone() {
+                    // Second scan selected — perform diff via action
+                    let second_id = scan.scan_id.clone();
+                    actions.push(Action::DiffScans(first_id.clone(), second_id));
+                } else {
+                    state.diff_first = Some(scan.scan_id.clone());
                 }
             }
         }
         KeyCode::Char('r') => {
             // Refresh via direct DB call (state-only, no App mutation needed)
-            if let Some(db) = db {
-                if let Ok(scans) = db.list_scans() {
-                    state.scans = scans;
-                    if !state.scans.is_empty() && state.table_state.selected().is_none() {
-                        state.table_state.select(Some(0));
-                    }
+            if let Some(db) = db
+                && let Ok(scans) = db.list_scans()
+            {
+                state.scans = scans;
+                if !state.scans.is_empty() && state.table_state.selected().is_none() {
+                    state.table_state.select(Some(0));
                 }
             }
         }

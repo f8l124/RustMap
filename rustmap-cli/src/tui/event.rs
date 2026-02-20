@@ -43,10 +43,10 @@ impl EventHandler {
     /// Wait for the next event.  Returns `Tick` if nothing happens within the tick rate.
     pub async fn next(&mut self) -> anyhow::Result<AppEvent> {
         // Drain any pending scan events first (non-blocking)
-        if let Some(ref mut rx) = self.scan_rx {
-            if let Ok(evt) = rx.try_recv() {
-                return Ok(AppEvent::Scan(evt));
-            }
+        if let Some(ref mut rx) = self.scan_rx
+            && let Ok(evt) = rx.try_recv()
+        {
+            return Ok(AppEvent::Scan(evt));
         }
 
         // Poll crossterm with the tick timeout
@@ -61,10 +61,10 @@ impl EventHandler {
         }
 
         // Check scan events again after the poll wait
-        if let Some(ref mut rx) = self.scan_rx {
-            if let Ok(evt) = rx.try_recv() {
-                return Ok(AppEvent::Scan(evt));
-            }
+        if let Some(ref mut rx) = self.scan_rx
+            && let Ok(evt) = rx.try_recv()
+        {
+            return Ok(AppEvent::Scan(evt));
         }
 
         Ok(AppEvent::Tick)
