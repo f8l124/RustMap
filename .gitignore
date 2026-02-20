@@ -1,0 +1,9 @@
+/target
+*.pdb
+.env
+*.log
+/plans
+.claude
+RustMap.code-workspace
+/art
+/docs/OLD_CHANGELOG.md

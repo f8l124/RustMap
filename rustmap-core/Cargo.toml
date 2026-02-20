@@ -1,0 +1,18 @@
+[package]
+name = "rustmap-core"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rustmap-types  = { workspace = true }
+rustmap-scan   = { workspace = true }
+rustmap-packet = { workspace = true }
+rustmap-output = { workspace = true }
+rustmap-detect = { workspace = true }
+tokio          = { workspace = true }
+thiserror      = { workspace = true }
+tracing        = { workspace = true }
+async-trait    = { workspace = true }
+ipnetwork      = { workspace = true }
+tokio-util     = { workspace = true }
+hickory-resolver = { workspace = true }

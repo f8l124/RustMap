@@ -1,0 +1,10 @@
+[package]
+name = "rustmap-geoip"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rustmap-types = { workspace = true }
+maxminddb     = "0.27"
+thiserror     = { workspace = true }
+tracing       = { workspace = true }

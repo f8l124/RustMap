@@ -1,0 +1,17 @@
+[package]
+name = "rustmap-python"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+name = "rustmap"
+crate-type = ["cdylib"]
+
+[dependencies]
+rustmap-types   = { workspace = true }
+rustmap-core    = { workspace = true }
+rustmap-timing  = { workspace = true }
+pyo3            = { workspace = true }
+pyo3-async-runtimes = { workspace = true }
+tokio           = { workspace = true }
+serde_json      = { workspace = true }

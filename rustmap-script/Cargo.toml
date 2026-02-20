@@ -1,0 +1,17 @@
+[package]
+name = "rustmap-script"
+version.workspace = true
+edition.workspace = true
+
+[features]
+default = []
+wasm = ["dep:wasmtime"]
+
+[dependencies]
+rustmap-types = { workspace = true }
+mlua          = { workspace = true }
+serde_json    = { workspace = true }
+serde         = { workspace = true }
+md5           = { workspace = true }
+socks         = { workspace = true }
+wasmtime      = { workspace = true, optional = true }

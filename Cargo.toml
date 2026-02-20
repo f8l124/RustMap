@@ -1,0 +1,86 @@
+[workspace]
+resolver = "3"
+members = [
+    "rustmap-types",
+    "rustmap-core",
+    "rustmap-packet",
+    "rustmap-scan",
+    "rustmap-timing",
+    "rustmap-detect",
+    "rustmap-script",
+    "rustmap-output",
+    "rustmap-db",
+    "rustmap-cli",
+    "rustmap-vuln",
+    "rustmap-api",
+    "rustmap-gui",
+    "rustmap-geoip",
+    "rustmap-python",
+    "rustmap-cloud",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+
+[workspace.dependencies]
+# Internal crates
+rustmap-types  = { path = "rustmap-types" }
+rustmap-core   = { path = "rustmap-core" }
+rustmap-packet = { path = "rustmap-packet" }
+rustmap-scan   = { path = "rustmap-scan" }
+rustmap-timing = { path = "rustmap-timing" }
+rustmap-detect = { path = "rustmap-detect" }
+rustmap-script = { path = "rustmap-script" }
+rustmap-output = { path = "rustmap-output" }
+rustmap-db     = { path = "rustmap-db" }
+rustmap-vuln   = { path = "rustmap-vuln" }
+rustmap-api    = { path = "rustmap-api" }
+rustmap-geoip  = { path = "rustmap-geoip" }
+rustmap-cloud  = { path = "rustmap-cloud" }
+
+# External crates
+tokio              = { version = "1", features = ["full"] }
+serde              = { version = "1", features = ["derive"] }
+serde_json         = "1"
+thiserror          = "2"
+anyhow             = "1"
+tracing            = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+clap               = { version = "4", features = ["derive"] }
+async-trait        = "0.1"
+etherparse         = "0.16"
+pcap               = "2"
+dashmap            = "6"
+rand               = "0.8"
+regex              = "1"
+ipnetwork          = "0.20"
+mlua               = { version = "0.10", features = ["lua54", "vendored", "send"] }
+tokio-util         = { version = "0.7", features = ["rt"] }
+futures            = "0.3"
+rusqlite           = { version = "0.34", features = ["bundled"] }
+toml               = "0.8"
+reqwest            = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+axum               = { version = "0.8", features = ["ws"] }
+tower-http         = { version = "0.6", features = ["cors", "limit"] }
+tower              = { version = "0.5", features = ["util"] }
+uuid               = { version = "1", features = ["v4"] }
+shlex              = "1"
+md5                = "0.7"
+subtle             = "2"
+sha2               = "0.10"
+serde_yaml         = "0.9"
+tokio-socks        = "0.5"
+socks              = "0.3"
+ratatui            = "0.30"
+crossterm          = "0.29"
+maxminddb          = "0.27"
+pyo3               = { version = "0.24", features = ["extension-module", "abi3-py39"] }
+pyo3-async-runtimes = { version = "0.24", features = ["tokio-runtime"] }
+crc32c             = "0.6"
+wasmtime           = "41"
+aws-config         = "1"
+aws-sdk-ec2        = "1"
+x509-parser        = "0.16"
+hickory-resolver   = { version = "0.24", features = ["tokio-runtime"] }

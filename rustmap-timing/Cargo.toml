@@ -1,0 +1,10 @@
+[package]
+name = "rustmap-timing"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rustmap-types = { workspace = true }
+tokio         = { workspace = true }
+tracing       = { workspace = true }
+rand          = { workspace = true }

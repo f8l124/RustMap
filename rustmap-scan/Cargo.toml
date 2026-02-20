@@ -1,0 +1,18 @@
+[package]
+name = "rustmap-scan"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rustmap-types  = { workspace = true }
+rustmap-packet = { workspace = true }
+rustmap-timing = { workspace = true }
+tokio          = { workspace = true }
+thiserror      = { workspace = true }
+tracing        = { workspace = true }
+async-trait    = { workspace = true }
+dashmap        = { workspace = true }
+futures        = { workspace = true }
+tokio-socks    = { workspace = true }
+crc32c         = { workspace = true }
+rand           = { workspace = true }

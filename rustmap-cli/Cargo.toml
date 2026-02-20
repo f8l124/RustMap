@@ -1,0 +1,47 @@
+[package]
+name = "rustmap-cli"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "rustmap"
+path = "src/main.rs"
+
+[features]
+default = ["watch", "api", "tui"]
+watch = ["dep:reqwest"]
+api = ["dep:rustmap-api"]
+tui = ["dep:ratatui", "dep:crossterm"]
+wasm = ["rustmap-script/wasm"]
+cloud-aws = ["dep:rustmap-cloud", "rustmap-cloud/aws"]
+cloud-azure = ["dep:rustmap-cloud", "rustmap-cloud/azure"]
+cloud-gcp = ["dep:rustmap-cloud", "rustmap-cloud/gcp"]
+cloud = ["cloud-aws", "cloud-azure", "cloud-gcp"]
+
+[dependencies]
+rustmap-types      = { workspace = true }
+rustmap-core       = { workspace = true }
+rustmap-packet     = { workspace = true }
+rustmap-output     = { workspace = true }
+rustmap-script     = { workspace = true }
+rustmap-timing     = { workspace = true }
+rustmap-db         = { workspace = true }
+rustmap-vuln       = { workspace = true }
+clap               = { workspace = true }
+tokio              = { workspace = true }
+anyhow             = { workspace = true }
+tracing            = { workspace = true }
+tracing-subscriber = { workspace = true }
+toml               = { workspace = true }
+serde              = { workspace = true }
+serde_json         = { workspace = true }
+tokio-util         = { workspace = true }
+reqwest            = { workspace = true, optional = true }
+shlex              = { workspace = true }
+uuid               = { workspace = true }
+rustmap-api        = { workspace = true, optional = true }
+ratatui            = { workspace = true, optional = true }
+crossterm          = { workspace = true, optional = true }
+rustmap-geoip      = { workspace = true }
+rustmap-cloud      = { workspace = true, optional = true }
+rand               = { workspace = true }

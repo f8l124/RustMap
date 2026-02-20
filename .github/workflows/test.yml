@@ -1,0 +1,147 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  fmt:
+    name: rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.85.0"
+          components: rustfmt
+
+      - run: cargo fmt --all -- --check
+
+  test-windows:
+    name: Test (Windows)
+    runs-on: windows-latest
+
+    env:
+      LIB: C:\npcap-sdk\Lib\x64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Npcap SDK
+        id: cache-npcap
+        uses: actions/cache@v4
+        with:
+          path: C:\npcap-sdk
+          key: npcap-sdk-1.13
+
+      - name: Download Npcap SDK
+        if: steps.cache-npcap.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          Invoke-WebRequest `
+            -Uri "https://npcap.com/dist/npcap-sdk-1.13.zip" `
+            -OutFile "$env:RUNNER_TEMP\npcap-sdk.zip"
+          Expand-Archive `
+            -Path "$env:RUNNER_TEMP\npcap-sdk.zip" `
+            -DestinationPath "C:\npcap-sdk"
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.85.0"
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Clippy
+        run: cargo clippy --workspace --exclude rustmap-gui -- -D warnings
+
+      - name: Test
+        run: cargo test --workspace --exclude rustmap-gui
+
+  test-linux:
+    name: Test (Linux)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install libpcap
+        run: sudo apt-get update && sudo apt-get install -y libpcap-dev
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.85.0"
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Clippy
+        run: cargo clippy --workspace --exclude rustmap-gui -- -D warnings
+
+      - name: Test
+        run: cargo test --workspace --exclude rustmap-gui
+
+  gui-check:
+    name: GUI build check
+    runs-on: windows-latest
+    needs: [test-windows]
+
+    env:
+      LIB: C:\npcap-sdk\Lib\x64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Npcap SDK
+        id: cache-npcap
+        uses: actions/cache@v4
+        with:
+          path: C:\npcap-sdk
+          key: npcap-sdk-1.13
+
+      - name: Download Npcap SDK
+        if: steps.cache-npcap.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          Invoke-WebRequest `
+            -Uri "https://npcap.com/dist/npcap-sdk-1.13.zip" `
+            -OutFile "$env:RUNNER_TEMP\npcap-sdk.zip"
+          Expand-Archive `
+            -Path "$env:RUNNER_TEMP\npcap-sdk.zip" `
+            -DestinationPath "C:\npcap-sdk"
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.85.0"
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: rustmap-gui/frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: rustmap-gui/frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: rustmap-gui/frontend
+        run: npm run build
+
+      - name: Test GUI crate
+        run: cargo test -p rustmap-gui
+
+      - name: Build GUI crate
+        run: cargo build -p rustmap-gui

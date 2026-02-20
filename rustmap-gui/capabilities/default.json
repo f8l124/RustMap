@@ -1,0 +1,12 @@
+{
+  "identifier": "default",
+  "description": "Default permissions for RustMap",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "shell:allow-open",
+    "core:event:default",
+    "core:event:allow-emit",
+    "core:event:allow-listen"
+  ]
+}

@@ -1,0 +1,34 @@
+[package]
+name = "rustmap-gui"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+name = "rustmap_gui_lib"
+path = "src/lib.rs"
+
+[[bin]]
+name = "rustmap-gui"
+path = "src/main.rs"
+
+[dependencies]
+rustmap-types  = { workspace = true }
+rustmap-core   = { workspace = true }
+rustmap-packet = { workspace = true }
+rustmap-output = { workspace = true }
+rustmap-timing = { workspace = true }
+rustmap-db     = { workspace = true }
+tauri          = { version = "2", features = ["devtools"] }
+tauri-plugin-shell = "2"
+tokio          = { workspace = true }
+tokio-util     = { workspace = true }
+serde          = { workspace = true }
+serde_json     = { workspace = true }
+uuid           = { workspace = true }
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

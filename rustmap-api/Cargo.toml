@@ -1,0 +1,27 @@
+[package]
+name = "rustmap-api"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rustmap-types  = { workspace = true }
+rustmap-core   = { workspace = true }
+rustmap-output = { workspace = true }
+rustmap-db     = { workspace = true }
+rustmap-vuln   = { workspace = true }
+rustmap-timing = { workspace = true }
+rustmap-packet = { workspace = true }
+axum           = { workspace = true }
+tokio          = { workspace = true }
+tokio-util     = { workspace = true }
+serde          = { workspace = true }
+serde_json     = { workspace = true }
+thiserror      = { workspace = true }
+tracing        = { workspace = true }
+tower-http     = { workspace = true }
+tower          = { workspace = true }
+uuid           = { workspace = true }
+futures        = { workspace = true }
+anyhow         = { workspace = true }
+subtle         = { workspace = true }
+sha2           = { workspace = true }

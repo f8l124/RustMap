@@ -1,0 +1,26 @@
+[package]
+name = "rustmap-cloud"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[features]
+default = []
+aws = ["dep:aws-config", "dep:aws-sdk-ec2"]
+azure = ["dep:reqwest"]
+gcp = ["dep:reqwest"]
+
+[dependencies]
+rustmap-types = { workspace = true }
+tokio         = { workspace = true }
+serde         = { workspace = true }
+serde_json    = { workspace = true }
+thiserror     = { workspace = true }
+tracing       = { workspace = true }
+
+# AWS SDK (optional)
+aws-config    = { version = "1", optional = true }
+aws-sdk-ec2   = { version = "1", optional = true }
+
+# Azure + GCP use reqwest directly (REST APIs)
+reqwest       = { workspace = true, optional = true }

@@ -1,0 +1,19 @@
+[package]
+name = "rustmap-vuln"
+version.workspace = true
+edition.workspace = true
+
+[features]
+default = ["update"]
+update = ["dep:reqwest"]
+
+[dependencies]
+rustmap-types = { workspace = true }
+rustmap-db    = { workspace = true }
+serde         = { workspace = true }
+serde_json    = { workspace = true }
+thiserror     = { workspace = true }
+tracing       = { workspace = true }
+anyhow        = { workspace = true }
+tokio         = { workspace = true }
+reqwest       = { workspace = true, optional = true }
