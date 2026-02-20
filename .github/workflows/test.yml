@@ -2,7 +2,7 @@ name: Test
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
 
 concurrency:
@@ -22,7 +22,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.85.0"
+          toolchain: stable
           components: rustfmt
 
       - run: cargo fmt --all -- --check
@@ -57,7 +57,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.85.0"
+          toolchain: stable
           components: clippy
 
       - uses: Swatinem/rust-cache@v2
@@ -80,7 +80,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.85.0"
+          toolchain: stable
           components: clippy
 
       - uses: Swatinem/rust-cache@v2
@@ -122,7 +122,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.85.0"
+          toolchain: stable
 
       - uses: Swatinem/rust-cache@v2
 
