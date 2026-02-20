@@ -94,7 +94,7 @@ jobs:
         run: cargo test --workspace --exclude rustmap-gui --exclude rustmap-python
 
   test-macos:
-    name: Test (macOS)
+    name: Test (macOS ARM)
     runs-on: macos-latest
 
     steps:
@@ -117,17 +117,26 @@ jobs:
         run: cargo test --workspace --exclude rustmap-gui --exclude rustmap-python
 
   gui-check:
-    name: GUI build check
-    runs-on: windows-latest
-    needs: [test-windows]
-
-    env:
-      LIB: C:\npcap-sdk\Lib\x64
+    name: GUI (${{ matrix.platform }})
+    needs: [test-windows, test-linux, test-macos]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: Windows
+            os: windows-latest
+          - platform: Linux
+            os: ubuntu-latest
+          - platform: macOS
+            os: macos-latest
+    runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v4
 
+      # --- Windows: Npcap SDK ---
       - name: Cache Npcap SDK
+        if: runner.os == 'Windows'
         id: cache-npcap
         uses: actions/cache@v4
         with:
@@ -135,7 +144,7 @@ jobs:
           key: npcap-sdk-1.13
 
       - name: Download Npcap SDK
-        if: steps.cache-npcap.outputs.cache-hit != 'true'
+        if: runner.os == 'Windows' && steps.cache-npcap.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
           Invoke-WebRequest `
@@ -145,6 +154,32 @@ jobs:
             -Path "$env:RUNNER_TEMP\npcap-sdk.zip" `
             -DestinationPath "C:\npcap-sdk"
 
+      - name: Set Npcap SDK path
+        if: runner.os == 'Windows'
+        shell: bash
+        run: echo "LIB=C:\\npcap-sdk\\Lib\\x64" >> "$GITHUB_ENV"
+
+      # --- Linux: system dependencies ---
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libpcap-dev \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev
+
+      # --- macOS: libpcap ---
+      - name: Install libpcap (macOS)
+        if: runner.os == 'macOS'
+        run: brew install libpcap
+
+      # --- Common steps ---
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
