@@ -73,18 +73,14 @@ fn check_pcap() -> CheckResult {
         if rustmap_packet::npcap_installed() {
             CheckResult::Pass("Npcap detected".into())
         } else {
-            CheckResult::Fail(
-                "Npcap not found. Download from https://npcap.com/#download".into(),
-            )
+            CheckResult::Fail("Npcap not found. Download from https://npcap.com/#download".into())
         }
     }
     #[cfg(not(windows))]
     {
         // On Linux/macOS, try listing interfaces as a proxy for libpcap presence
         match rustmap_packet::list_interfaces() {
-            Ok(ifaces) if !ifaces.is_empty() => {
-                CheckResult::Pass("libpcap available".into())
-            }
+            Ok(ifaces) if !ifaces.is_empty() => CheckResult::Pass("libpcap available".into()),
             Ok(_) => CheckResult::Warn("libpcap available but no interfaces found".into()),
             Err(e) => CheckResult::Fail(format!("libpcap not available: {e}")),
         }
@@ -163,11 +159,9 @@ fn check_loopback() -> CheckResult {
         Err(e) => {
             // Use ErrorKind for reliable cross-locale error detection
             match e.kind() {
-                ErrorKind::ConnectionRefused | ErrorKind::ConnectionReset => {
-                    CheckResult::Pass(
-                        "127.0.0.1:80 reachable (connection refused — loopback works)".into(),
-                    )
-                }
+                ErrorKind::ConnectionRefused | ErrorKind::ConnectionReset => CheckResult::Pass(
+                    "127.0.0.1:80 reachable (connection refused — loopback works)".into(),
+                ),
                 ErrorKind::TimedOut => {
                     CheckResult::Warn("127.0.0.1:80 timed out (firewall may be blocking)".into())
                 }

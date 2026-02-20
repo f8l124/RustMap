@@ -12,8 +12,7 @@ pub struct HtmlFormatter;
 impl OutputFormatter for HtmlFormatter {
     fn format(&self, result: &ScanResult) -> Result<String, OutputError> {
         let mut out = String::with_capacity(32_768);
-        write_html_report(&mut out, result)
-            .map_err(|e| OutputError::FormatError(e.to_string()))?;
+        write_html_report(&mut out, result).map_err(|e| OutputError::FormatError(e.to_string()))?;
         Ok(out)
     }
 }
@@ -160,7 +159,11 @@ fn write_html_report(out: &mut String, result: &ScanResult) -> std::fmt::Result 
 
     // --- Scan metadata ---
     out.push_str("<section class=\"meta\">\n<table class=\"meta-tbl\">\n");
-    writeln!(out, "<tr><td>Scan Type</td><td>{}</td></tr>", result.scan_type)?;
+    writeln!(
+        out,
+        "<tr><td>Scan Type</td><td>{}</td></tr>",
+        result.scan_type
+    )?;
     writeln!(
         out,
         "<tr><td>Duration</td><td>{}</td></tr>",
@@ -228,11 +231,7 @@ fn write_html_report(out: &mut String, result: &ScanResult) -> std::fmt::Result 
     // --- Per-host sections ---
     for host_result in &result.hosts {
         let ip = &host_result.host.ip;
-        let hn = host_result
-            .host
-            .hostname
-            .as_deref()
-            .unwrap_or("");
+        let hn = host_result.host.hostname.as_deref().unwrap_or("");
 
         let open_attr = if host_result.host_status == HostStatus::Up {
             " open"
@@ -240,12 +239,13 @@ fn write_html_report(out: &mut String, result: &ScanResult) -> std::fmt::Result 
             ""
         };
 
-        write!(
-            out,
-            "<details class=\"host\"{open_attr}>\n<summary>{ip}",
-        )?;
+        write!(out, "<details class=\"host\"{open_attr}>\n<summary>{ip}",)?;
         if !hn.is_empty() {
-            write!(out, " <span class=\"hostname\">({})</span>", html_escape(hn))?;
+            write!(
+                out,
+                " <span class=\"hostname\">({})</span>",
+                html_escape(hn)
+            )?;
         }
         write!(
             out,
@@ -274,7 +274,11 @@ fn write_html_report(out: &mut String, result: &ScanResult) -> std::fmt::Result 
             out.push_str("</span>\n");
         }
         if let Some(lat) = host_result.discovery_latency {
-            writeln!(out, "<span class=\"tag\">Latency: {}</span>", format_duration(lat))?;
+            writeln!(
+                out,
+                "<span class=\"tag\">Latency: {}</span>",
+                format_duration(lat)
+            )?;
         }
         if let Some(mtu) = host_result.mtu {
             writeln!(out, "<span class=\"tag\">MTU: {mtu}</span>")?;
@@ -446,7 +450,11 @@ fn write_html_report(out: &mut String, result: &ScanResult) -> std::fmt::Result 
     // --- Pre/post script results ---
     if !result.pre_script_results.is_empty() || !result.post_script_results.is_empty() {
         out.push_str("<section class=\"global-scripts\">\n<h2>Global Scripts</h2>\n");
-        for sr in result.pre_script_results.iter().chain(&result.post_script_results) {
+        for sr in result
+            .pre_script_results
+            .iter()
+            .chain(&result.post_script_results)
+        {
             writeln!(
                 out,
                 "<div class=\"script-block\"><strong>{}</strong><pre>{}</pre></div>",

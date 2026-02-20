@@ -193,9 +193,7 @@ impl ProbeTracker {
 
     /// Check if all probes for this host have completed (responded or timed out).
     pub fn is_complete(&self) -> bool {
-        self.probes
-            .iter()
-            .all(|e| e.state != ProbeState::Sent)
+        self.probes.iter().all(|e| e.state != ProbeState::Sent)
     }
 
     /// Number of probes still in-flight (state == Sent).

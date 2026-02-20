@@ -5,10 +5,10 @@
 use std::sync::Arc;
 use std::time::Instant;
 
+use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use axum::Json;
 use rustmap_core::ScanEngine;
 use rustmap_types::ScanResult;
 use serde::{Deserialize, Serialize};
@@ -33,8 +33,7 @@ pub struct StartScanResponse {
 const MAX_CONCURRENT_SCANS: usize = 10;
 
 /// Minimum interval between scan creation requests (per rate-limit key).
-const SCAN_RATE_LIMIT_INTERVAL: std::time::Duration =
-    std::time::Duration::from_secs(1);
+const SCAN_RATE_LIMIT_INTERVAL: std::time::Duration = std::time::Duration::from_secs(1);
 
 pub async fn start_scan(
     State(state): State<Arc<AppState>>,
@@ -60,9 +59,7 @@ pub async fn start_scan(
         rate_map.insert(rate_key, now);
     }
 
-    let scan_config = config
-        .into_scan_config()
-        .map_err(ApiError::InvalidConfig)?;
+    let scan_config = config.into_scan_config().map_err(ApiError::InvalidConfig)?;
 
     let scan_id = format!("scan-{}", uuid::Uuid::new_v4());
     let started_at = now_ms();
@@ -84,7 +81,10 @@ pub async fn start_scan(
     // count check before either inserts.
     {
         let mut scans = state.scans.write().await;
-        let running = scans.values().filter(|s| matches!(s.status, ScanStatus::Running)).count();
+        let running = scans
+            .values()
+            .filter(|s| matches!(s.status, ScanStatus::Running))
+            .count();
         if running >= MAX_CONCURRENT_SCANS {
             return Err(ApiError::Conflict(format!(
                 "maximum concurrent scans reached ({MAX_CONCURRENT_SCANS}); stop a running scan first"
@@ -97,13 +97,10 @@ pub async fn start_scan(
     let (tx, rx) = mpsc::channel(64);
     let cancel_for_engine = cancel.clone();
     tokio::spawn(async move {
-        if let Err(e) =
-            ScanEngine::run_streaming(&scan_config, tx.clone(), cancel_for_engine).await
+        if let Err(e) = ScanEngine::run_streaming(&scan_config, tx.clone(), cancel_for_engine).await
         {
             warn!(error = %e, "scan engine error");
-            let _ = tx
-                .send(rustmap_core::ScanEvent::Error(e.to_string()))
-                .await;
+            let _ = tx.send(rustmap_core::ScanEvent::Error(e.to_string())).await;
         }
     });
 
@@ -111,14 +108,7 @@ pub async fn start_scan(
     let state_for_relay = state.clone();
     let scan_id_for_relay = scan_id.clone();
     tokio::spawn(async move {
-        relay_scan_events(
-            rx,
-            event_tx,
-            state_for_relay,
-            scan_id_for_relay,
-            started_at,
-        )
-        .await;
+        relay_scan_events(rx, event_tx, state_for_relay, scan_id_for_relay, started_at).await;
     });
 
     info!(scan_id = %scan_id, "scan started");
@@ -161,13 +151,9 @@ async fn relay_scan_events(
                 // Save to database
                 {
                     let store = state.store.lock().await;
-                    if let Err(e) = store.save_scan(
-                        &scan_id,
-                        &result,
-                        started_at,
-                        finished_at,
-                        None,
-                    ) {
+                    if let Err(e) =
+                        store.save_scan(&scan_id, &result, started_at, finished_at, None)
+                    {
                         warn!(error = %e, "failed to save scan to database");
                     }
                 }
@@ -208,12 +194,10 @@ async fn relay_scan_events(
             && matches!(tracked.status, ScanStatus::Running)
         {
             warn!(scan_id = %scan_id, "scan terminated unexpectedly");
-            tracked.status =
-                ScanStatus::Error("scan terminated unexpectedly".into());
+            tracked.status = ScanStatus::Error("scan terminated unexpectedly".into());
             tracked.finished_at = Some(now_ms());
         }
     }
-
 }
 
 /// Maximum age (in seconds) of a completed scan before it is swept from memory.
@@ -226,9 +210,8 @@ const SWEEP_INTERVAL_SECS: u64 = 60;
 /// errored/cancelled scans older than `COMPLETED_SCAN_TTL_SECS` from memory.
 pub fn spawn_scan_sweep_task(state: Arc<AppState>) {
     tokio::spawn(async move {
-        let mut interval = tokio::time::interval(
-            tokio::time::Duration::from_secs(SWEEP_INTERVAL_SECS),
-        );
+        let mut interval =
+            tokio::time::interval(tokio::time::Duration::from_secs(SWEEP_INTERVAL_SECS));
         loop {
             interval.tick().await;
             let now = now_ms();
@@ -323,10 +306,8 @@ pub async fn list_scans(
         let store = state.store.lock().await;
         match store.list_scans() {
             Ok(db_scans) => {
-                let in_memory_ids: std::collections::HashSet<_> = summaries
-                    .iter()
-                    .map(|s| s.scan_id.clone())
-                    .collect();
+                let in_memory_ids: std::collections::HashSet<_> =
+                    summaries.iter().map(|s| s.scan_id.clone()).collect();
 
                 for scan in db_scans {
                     if in_memory_ids.contains(&scan.scan_id) {
@@ -356,10 +337,7 @@ pub async fn list_scans(
     let total = summaries.len();
     let page: Vec<_> = summaries.into_iter().skip(offset).take(limit).collect();
 
-    Ok(Json(ListScansResponse {
-        scans: page,
-        total,
-    }))
+    Ok(Json(ListScansResponse { scans: page, total }))
 }
 
 // ---------------------------------------------------------------------------
@@ -410,24 +388,20 @@ pub async fn get_scan(
     match store.load_scan(&scan_id) {
         Ok(Some(result)) => {
             // Get the summary for metadata
-            let summary = store.list_scans().ok().and_then(|scans| {
-                scans.into_iter().find(|s| s.scan_id == scan_id)
-            });
+            let summary = store
+                .list_scans()
+                .ok()
+                .and_then(|scans| scans.into_iter().find(|s| s.scan_id == scan_id));
 
             Ok(Json(ScanResultResponse {
                 scan_id: scan_id.clone(),
                 status: "completed".into(),
-                started_at: summary
-                    .as_ref()
-                    .map(|s| s.started_at)
-                    .unwrap_or(0),
+                started_at: summary.as_ref().map(|s| s.started_at).unwrap_or(0),
                 finished_at: summary.as_ref().map(|s| s.finished_at),
                 result: Some(result),
             }))
         }
-        Ok(None) => Err(ApiError::NotFound(format!(
-            "scan not found: {scan_id}"
-        ))),
+        Ok(None) => Err(ApiError::NotFound(format!("scan not found: {scan_id}"))),
         Err(e) => {
             warn!(error = %e, scan_id = %scan_id, "database error loading scan");
             Err(ApiError::Internal(
@@ -467,9 +441,7 @@ pub async fn delete_scan(
     let store = state.store.lock().await;
     match store.delete_scan(&scan_id) {
         Ok(true) => Ok(Json(DeleteResponse { deleted: true })),
-        Ok(false) => Err(ApiError::NotFound(format!(
-            "scan not found: {scan_id}"
-        ))),
+        Ok(false) => Err(ApiError::NotFound(format!("scan not found: {scan_id}"))),
         Err(e) => {
             warn!(error = %e, scan_id = %scan_id, "database error deleting scan");
             Err(ApiError::Internal(
@@ -495,14 +467,12 @@ pub async fn stop_scan(
 ) -> Result<Json<StopResponse>, ApiError> {
     let mut scans = state.scans.write().await;
 
-    let tracked = scans.get_mut(&scan_id).ok_or_else(|| {
-        ApiError::NotFound(format!("scan not found: {scan_id}"))
-    })?;
+    let tracked = scans
+        .get_mut(&scan_id)
+        .ok_or_else(|| ApiError::NotFound(format!("scan not found: {scan_id}")))?;
 
     if !matches!(tracked.status, ScanStatus::Running) {
-        return Err(ApiError::Conflict(
-            "scan is not running".into(),
-        ));
+        return Err(ApiError::Conflict("scan is not running".into()));
     }
 
     tracked.cancel.cancel();
@@ -538,18 +508,12 @@ pub async fn export_scan(
             warn!(error = %e, scan_id = %scan_id, "database error exporting scan");
             ApiError::Internal("failed to load scan for export".into())
         })?
-        .ok_or_else(|| {
-            ApiError::NotFound(format!("scan not found: {scan_id}"))
-        })?;
+        .ok_or_else(|| ApiError::NotFound(format!("scan not found: {scan_id}")))?;
     drop(store);
 
     let (content_type, body) = format_scan_result(&result, &params.format)?;
 
-    Ok((
-        [(axum::http::header::CONTENT_TYPE, content_type)],
-        body,
-    )
-        .into_response())
+    Ok(([(axum::http::header::CONTENT_TYPE, content_type)], body).into_response())
 }
 
 fn format_scan_result(
@@ -581,8 +545,7 @@ fn format_scan_result(
             Ok(("text/plain", body))
         }
         "normal" => {
-            let formatter =
-                rustmap_output::StdoutFormatter::new(false, result.scan_type);
+            let formatter = rustmap_output::StdoutFormatter::new(false, result.scan_type);
             let body = formatter
                 .format(result)
                 .map_err(|e| ApiError::Internal(e.to_string()))?;

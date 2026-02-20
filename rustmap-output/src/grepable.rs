@@ -15,22 +15,22 @@ impl OutputFormatter for GrepableFormatter {
         let mut out = String::new();
 
         // Header comment
-        let args = result.command_args.as_deref().unwrap_or("rustmap")
+        let args = result
+            .command_args
+            .as_deref()
+            .unwrap_or("rustmap")
             .replace(['\n', '\r'], " ");
         let datetime = format_start_datetime(result);
         writeln!(
             out,
             "# rustmap 0.1.0 scan initiated {} as: {}",
-            datetime,
-            args,
+            datetime, args,
         )
         .unwrap();
 
         for host_result in &result.hosts {
             let ip = host_result.host.ip.to_string();
-            let hostname = escape_grepable(
-                host_result.host.hostname.as_deref().unwrap_or(""),
-            );
+            let hostname = escape_grepable(host_result.host.hostname.as_deref().unwrap_or(""));
 
             // Status line
             let status = match host_result.host_status {
@@ -232,13 +232,15 @@ impl OutputFormatter for GrepableFormatter {
 /// Escape characters that would break the grepable format: slashes (field delimiters),
 /// tabs (field separators), and newlines (record terminators).
 fn escape_grepable(s: &str) -> String {
-    s.replace('/', "|")
-        .replace(['\t', '\n', '\r'], " ")
+    s.replace('/', "|").replace(['\t', '\n', '\r'], " ")
 }
 
 /// Count closed ports in a port list.
 fn closed_count(ports: &[rustmap_types::Port]) -> usize {
-    ports.iter().filter(|p| p.state == PortState::Closed).count()
+    ports
+        .iter()
+        .filter(|p| p.state == PortState::Closed)
+        .count()
 }
 
 /// Format start time for the grepable header.
@@ -262,8 +264,7 @@ fn format_unix_timestamp(secs: u64) -> String {
     let (year, month, day) = days_to_ymd(days);
 
     let month_names = [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
     ];
     let day_names = ["Thu", "Fri", "Sat", "Sun", "Mon", "Tue", "Wed"];
     let weekday = (days % 7) as usize;
@@ -599,9 +600,7 @@ mod tests {
     #[test]
     fn grepable_ignored_state() {
         // Create 15 closed ports + 1 open
-        let mut ports: Vec<Port> = (1..=15)
-            .map(|n| make_port(n, PortState::Closed))
-            .collect();
+        let mut ports: Vec<Port> = (1..=15).map(|n| make_port(n, PortState::Closed)).collect();
         ports.push(Port {
             number: 80,
             protocol: Protocol::Tcp,

@@ -19,4 +19,4 @@ pub use scan::{
 };
 pub use script::{ScriptCategory, ScriptConfig, ScriptPhase, ScriptResult, ScriptValue};
 pub use service::{DetectionMethod, ServiceInfo};
-pub use top_ports::{top_tcp_ports, top_udp_ports, DEFAULT_TOP_PORTS, FAST_MODE_TOP_PORTS};
+pub use top_ports::{DEFAULT_TOP_PORTS, FAST_MODE_TOP_PORTS, top_tcp_ports, top_udp_ports};

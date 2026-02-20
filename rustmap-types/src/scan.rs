@@ -252,9 +252,7 @@ impl ProxyConfig {
             (host_port[..colon].to_string(), &host_port[colon + 1..])
         };
 
-        let port: u16 = port
-            .parse()
-            .map_err(|_| format!("invalid port: {port}"))?;
+        let port: u16 = port.parse().map_err(|_| format!("invalid port: {port}"))?;
 
         if host.is_empty() {
             return Err("proxy host cannot be empty".to_string());
@@ -369,9 +367,7 @@ impl ScanConfig {
         if let (Some(min), Some(max)) = (self.min_rate, self.max_rate)
             && min > max
         {
-            errors.push(format!(
-                "min_rate ({min}) cannot exceed max_rate ({max})"
-            ));
+            errors.push(format!("min_rate ({min}) cannot exceed max_rate ({max})"));
         }
         if let (Some(delay), Some(max_delay)) = (self.scan_delay, self.max_scan_delay)
             && delay > max_delay

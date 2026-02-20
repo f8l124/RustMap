@@ -14,9 +14,9 @@ pub fn npcap_installed() -> bool {
 ///
 /// Uses the Win32 API: OpenProcessToken + GetTokenInformation(TokenElevation).
 pub fn check() -> PrivilegeLevel {
-    use windows_sys::Win32::Foundation::{CloseHandle, HANDLE, FALSE};
+    use windows_sys::Win32::Foundation::{CloseHandle, FALSE, HANDLE};
     use windows_sys::Win32::Security::{
-        GetTokenInformation, TokenElevation, TOKEN_ELEVATION, TOKEN_QUERY,
+        GetTokenInformation, TOKEN_ELEVATION, TOKEN_QUERY, TokenElevation,
     };
     use windows_sys::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
 

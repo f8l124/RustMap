@@ -381,7 +381,12 @@ async fn send_loop(
             }
             let decoy_port = 1024 + (rand_seq() % 64000) as u16;
             if let Ok(pkt) = rustmap_packet::build::build_tcp_packet(
-                decoy_ip, decoy_port, dst_ip, dst_port, rand_seq(), flags,
+                decoy_ip,
+                decoy_port,
+                dst_ip,
+                dst_port,
+                rand_seq(),
+                flags,
             ) {
                 let _ = sender.send_raw(decoy_ip, dst_ip, &pkt).await;
             }
@@ -591,7 +596,12 @@ async fn send_fragmented_tcp(
     flags: TcpFlags,
 ) -> Result<(), rustmap_packet::PacketError> {
     let pkt = rustmap_packet::build::build_tcp_packet(
-        src_ip, src_port, dst_ip, dst_port, rand_seq(), flags,
+        src_ip,
+        src_port,
+        dst_ip,
+        dst_port,
+        rand_seq(),
+        flags,
     )?;
     let fragments = fragment_ipv4_packet(&pkt)?;
     for frag in &fragments {
@@ -702,7 +712,11 @@ mod tests {
 
         let results = tracker.collect_results();
         assert_eq!(results.len(), 1);
-        assert!(results.iter().any(|(p, s)| *p == 80 && *s == PortState::Open));
+        assert!(
+            results
+                .iter()
+                .any(|(p, s)| *p == 80 && *s == PortState::Open)
+        );
     }
 
     #[test]
@@ -729,7 +743,11 @@ mod tests {
         handle_response(&response, ip, &timing, &tracker, &policy);
 
         let results = tracker.collect_results();
-        assert!(results.iter().any(|(p, s)| *p == 443 && *s == PortState::Closed));
+        assert!(
+            results
+                .iter()
+                .any(|(p, s)| *p == 443 && *s == PortState::Closed)
+        );
     }
 
     #[test]
@@ -756,9 +774,11 @@ mod tests {
         handle_response(&response, ip, &timing, &tracker, &policy);
 
         let results = tracker.collect_results();
-        assert!(results
-            .iter()
-            .any(|(p, s)| *p == 22 && *s == PortState::Unfiltered));
+        assert!(
+            results
+                .iter()
+                .any(|(p, s)| *p == 22 && *s == PortState::Unfiltered)
+        );
     }
 
     #[test]
@@ -791,7 +811,11 @@ mod tests {
         handle_response(&response, ip, &timing, &tracker, &policy);
 
         let results = tracker.collect_results();
-        assert!(results.iter().any(|(p, s)| *p == 80 && *s == PortState::Open));
+        assert!(
+            results
+                .iter()
+                .any(|(p, s)| *p == 80 && *s == PortState::Open)
+        );
     }
 
     #[test]
@@ -824,9 +848,11 @@ mod tests {
         handle_response(&response, ip, &timing, &tracker, &policy);
 
         let results = tracker.collect_results();
-        assert!(results
-            .iter()
-            .any(|(p, s)| *p == 443 && *s == PortState::Closed));
+        assert!(
+            results
+                .iter()
+                .any(|(p, s)| *p == 443 && *s == PortState::Closed)
+        );
     }
 
     #[test]

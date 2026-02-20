@@ -10,9 +10,9 @@ mod ws;
 
 use std::sync::Arc;
 
+use axum::Router;
 use axum::middleware::from_fn_with_state;
 use axum::routing::{get, post};
-use axum::Router;
 use tower_http::cors::CorsLayer;
 use tower_http::limit::RequestBodyLimitLayer;
 
@@ -23,8 +23,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
     // Launch a single background task that sweeps completed scans from memory.
     scans::spawn_scan_sweep_task(state.clone());
 
-    let health_route =
-        Router::new().route("/api/system/health", get(system::health_check));
+    let health_route = Router::new().route("/api/system/health", get(system::health_check));
 
     let api_routes = Router::new()
         .route("/api/scans", post(scans::start_scan).get(scans::list_scans))
@@ -34,17 +33,11 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         )
         .route("/api/scans/{id}/stop", post(scans::stop_scan))
         .route("/api/scans/{id}/export", get(scans::export_scan))
-        .route(
-            "/api/scans/{id}/diff/{other_id}",
-            get(diff::diff_scans),
-        )
+        .route("/api/scans/{id}/diff/{other_id}", get(diff::diff_scans))
         .route("/api/scans/{id}/events", get(ws::scan_events_ws))
         .route("/api/vuln/check", post(vuln::vuln_check))
         .route("/api/vuln/update", post(vuln::vuln_update))
-        .route(
-            "/api/system/privileges",
-            get(system::get_privileges),
-        );
+        .route("/api/system/privileges", get(system::get_privileges));
 
     // Apply auth middleware only if api_key_hash is configured
     let api_routes = if state.api_key_hash.is_some() {

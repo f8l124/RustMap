@@ -4,8 +4,8 @@
 
 use std::sync::Arc;
 
-use axum::extract::State;
 use axum::Json;
+use axum::extract::State;
 use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
 
@@ -43,11 +43,10 @@ pub async fn vuln_check(
     let store = state.store.lock().await;
 
     // Seed bundled CVEs if not already done
-    rustmap_vuln::seed_bundled_cves(&store)
-        .map_err(|e| {
-            warn!(error = %e, "failed to seed CVEs");
-            ApiError::Internal("failed to initialize vulnerability database".into())
-        })?;
+    rustmap_vuln::seed_bundled_cves(&store).map_err(|e| {
+        warn!(error = %e, "failed to seed CVEs");
+        ApiError::Internal("failed to initialize vulnerability database".into())
+    })?;
 
     let result = store
         .load_scan(&req.scan_id)
@@ -55,9 +54,7 @@ pub async fn vuln_check(
             warn!(error = %e, scan_id = %req.scan_id, "database error loading scan for vuln check");
             ApiError::Internal("failed to load scan from database".into())
         })?
-        .ok_or_else(|| {
-            ApiError::NotFound(format!("scan not found: {}", req.scan_id))
-        })?;
+        .ok_or_else(|| ApiError::NotFound(format!("scan not found: {}", req.scan_id)))?;
 
     let min_cvss = req.min_cvss;
 
@@ -93,18 +90,15 @@ pub async fn vuln_update(
     let store = state.store.lock().await;
 
     // Seed bundled CVEs
-    rustmap_vuln::seed_bundled_cves(&store)
-        .map_err(|e| {
-            warn!(error = %e, "failed to seed CVEs during update");
-            ApiError::Internal("failed to update vulnerability database".into())
-        })?;
+    rustmap_vuln::seed_bundled_cves(&store).map_err(|e| {
+        warn!(error = %e, "failed to seed CVEs during update");
+        ApiError::Internal("failed to update vulnerability database".into())
+    })?;
 
-    let count = store
-        .count_cves()
-        .map_err(|e| {
-            warn!(error = %e, "failed to count CVEs");
-            ApiError::Internal("failed to query vulnerability database".into())
-        })?;
+    let count = store.count_cves().map_err(|e| {
+        warn!(error = %e, "failed to count CVEs");
+        ApiError::Internal("failed to query vulnerability database".into())
+    })?;
 
     info!(total_cves = count, "CVE database updated");
 

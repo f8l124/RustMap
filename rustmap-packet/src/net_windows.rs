@@ -9,8 +9,8 @@ use std::net::Ipv4Addr;
 use tracing::{debug, warn};
 use windows_sys::Win32::Foundation::ERROR_BUFFER_OVERFLOW;
 use windows_sys::Win32::NetworkManagement::IpHelper::{
-    GetAdaptersAddresses, SendARP, IP_ADAPTER_ADDRESSES_LH,
-    IP_ADAPTER_GATEWAY_ADDRESS_LH, IP_ADAPTER_UNICAST_ADDRESS_LH,
+    GetAdaptersAddresses, IP_ADAPTER_ADDRESSES_LH, IP_ADAPTER_GATEWAY_ADDRESS_LH,
+    IP_ADAPTER_UNICAST_ADDRESS_LH, SendARP,
 };
 use windows_sys::Win32::Networking::WinSock::{AF_INET, SOCKADDR, SOCKADDR_IN};
 

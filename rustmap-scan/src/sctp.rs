@@ -345,11 +345,7 @@ async fn response_processor(
 }
 
 /// Process a single captured response for SCTP INIT scanning.
-fn handle_response(
-    response: &CapturedResponse,
-    timing: &TimingController,
-    tracker: &ProbeTracker,
-) {
+fn handle_response(response: &CapturedResponse, timing: &TimingController, tracker: &ProbeTracker) {
     let port_state = match response.response_type {
         // SCTP INIT-ACK → port is open
         ResponseType::SctpInitAck => PortState::Open,
@@ -500,9 +496,11 @@ mod tests {
 
         let results = tracker.collect_results();
         assert_eq!(results.len(), 1);
-        assert!(results
-            .iter()
-            .any(|(p, s)| *p == 3868 && *s == PortState::Open));
+        assert!(
+            results
+                .iter()
+                .any(|(p, s)| *p == 3868 && *s == PortState::Open)
+        );
     }
 
     #[test]
@@ -528,9 +526,11 @@ mod tests {
         handle_response(&response, &timing, &tracker);
 
         let results = tracker.collect_results();
-        assert!(results
-            .iter()
-            .any(|(p, s)| *p == 2905 && *s == PortState::Closed));
+        assert!(
+            results
+                .iter()
+                .any(|(p, s)| *p == 2905 && *s == PortState::Closed)
+        );
     }
 
     #[test]
@@ -556,9 +556,11 @@ mod tests {
         handle_response(&response, &timing, &tracker);
 
         let results = tracker.collect_results();
-        assert!(results
-            .iter()
-            .any(|(p, s)| *p == 5060 && *s == PortState::Filtered));
+        assert!(
+            results
+                .iter()
+                .any(|(p, s)| *p == 5060 && *s == PortState::Filtered)
+        );
     }
 
     #[test]

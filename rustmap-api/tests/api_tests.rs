@@ -140,9 +140,7 @@ async fn test_list_scans_empty() {
     let state = test_state();
     let app = rustmap_api::build_router(state);
 
-    let req = Request::get("/api/scans")
-        .body(Body::empty())
-        .unwrap();
+    let req = Request::get("/api/scans").body(Body::empty()).unwrap();
 
     let resp = app.oneshot(req).await.unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
@@ -263,9 +261,7 @@ async fn test_list_scans_from_database() {
 
     let app = rustmap_api::build_router(state);
 
-    let req = Request::get("/api/scans")
-        .body(Body::empty())
-        .unwrap();
+    let req = Request::get("/api/scans").body(Body::empty()).unwrap();
 
     let resp = app.oneshot(req).await.unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
@@ -385,9 +381,7 @@ async fn test_auth_rejects_without_token() {
     let state = test_state_with_key("secret123");
     let app = rustmap_api::build_router(state);
 
-    let req = Request::get("/api/scans")
-        .body(Body::empty())
-        .unwrap();
+    let req = Request::get("/api/scans").body(Body::empty()).unwrap();
 
     let resp = app.oneshot(req).await.unwrap();
     assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);

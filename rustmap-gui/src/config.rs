@@ -211,7 +211,10 @@ impl GuiScanConfig {
                     .split(',')
                     .map(|s| s.trim())
                     .filter(|s| !s.is_empty())
-                    .map(|s| s.parse().map_err(|e| format!("invalid decoy IP '{}': {}", s, e)))
+                    .map(|s| {
+                        s.parse()
+                            .map_err(|e| format!("invalid decoy IP '{}': {}", s, e))
+                    })
                     .collect::<Result<Vec<_>, _>>()?
             } else {
                 Vec::new()
@@ -225,9 +228,7 @@ impl GuiScanConfig {
                         None
                     } else {
                         if hex.len() % 2 != 0 {
-                            return Err(
-                                "hex payload must have even number of characters".into()
-                            );
+                            return Err("hex payload must have even number of characters".into());
                         }
                         let bytes: Vec<u8> = (0..hex.len())
                             .step_by(2)
@@ -851,10 +852,7 @@ mod tests {
         cfg.payload_type = "hex".into();
         cfg.payload_value = Some("deadbeef".into());
         let result = cfg.into_scan_config().unwrap();
-        assert_eq!(
-            result.custom_payload.unwrap(),
-            vec![0xde, 0xad, 0xbe, 0xef]
-        );
+        assert_eq!(result.custom_payload.unwrap(), vec![0xde, 0xad, 0xbe, 0xef]);
     }
 
     #[test]

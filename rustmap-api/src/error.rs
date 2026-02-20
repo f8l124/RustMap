@@ -2,9 +2,9 @@
 // API error types
 // ---------------------------------------------------------------------------
 
+use axum::Json;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use axum::Json;
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]
@@ -33,9 +33,7 @@ impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let (status, error_key, message) = match self {
             ApiError::BadRequest(msg) => (StatusCode::BAD_REQUEST, "bad_request", msg),
-            ApiError::Unauthorized(msg) => {
-                (StatusCode::UNAUTHORIZED, "unauthorized", msg)
-            }
+            ApiError::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, "unauthorized", msg),
             ApiError::NotFound(msg) => (StatusCode::NOT_FOUND, "not_found", msg),
             ApiError::Conflict(msg) => (StatusCode::CONFLICT, "conflict", msg),
             ApiError::InvalidConfig(msg) => {

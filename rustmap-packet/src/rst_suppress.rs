@@ -67,7 +67,11 @@ impl Drop for RstSuppressGuard {
 
 #[cfg(unix)]
 fn iptables_cmd(src_ip: IpAddr) -> &'static str {
-    if src_ip.is_ipv6() { "ip6tables" } else { "iptables" }
+    if src_ip.is_ipv6() {
+        "ip6tables"
+    } else {
+        "iptables"
+    }
 }
 
 #[cfg(unix)]
@@ -76,11 +80,17 @@ fn add_iptables_rule(src_ip: IpAddr) -> bool {
     let cmd = iptables_cmd(src_ip);
     let result = std::process::Command::new(cmd)
         .args([
-            "-A", "OUTPUT",
-            "-p", "tcp",
-            "--tcp-flags", "RST", "RST",
-            "-s", &ip_str,
-            "-j", "DROP",
+            "-A",
+            "OUTPUT",
+            "-p",
+            "tcp",
+            "--tcp-flags",
+            "RST",
+            "RST",
+            "-s",
+            &ip_str,
+            "-j",
+            "DROP",
         ])
         .output();
 
@@ -99,11 +109,17 @@ fn remove_iptables_rule(src_ip: IpAddr) {
     let cmd = iptables_cmd(src_ip);
     let result = std::process::Command::new(cmd)
         .args([
-            "-D", "OUTPUT",
-            "-p", "tcp",
-            "--tcp-flags", "RST", "RST",
-            "-s", &ip_str,
-            "-j", "DROP",
+            "-D",
+            "OUTPUT",
+            "-p",
+            "tcp",
+            "--tcp-flags",
+            "RST",
+            "RST",
+            "-s",
+            &ip_str,
+            "-j",
+            "DROP",
         ])
         .output();
 

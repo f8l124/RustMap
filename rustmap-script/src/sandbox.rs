@@ -45,15 +45,14 @@ impl LuaSandbox {
     pub fn execute(&self, code: &str) -> Result<Value, ScriptError> {
         // Set instruction limit hook to prevent infinite loops
         let hook_count = INSTRUCTION_LIMIT;
-        self.lua
-            .set_hook(
-                mlua::HookTriggers::new().every_nth_instruction(hook_count),
-                |_lua, _debug| {
-                    Err(mlua::Error::RuntimeError(
-                        "script exceeded instruction limit".into(),
-                    ))
-                },
-            );
+        self.lua.set_hook(
+            mlua::HookTriggers::new().every_nth_instruction(hook_count),
+            |_lua, _debug| {
+                Err(mlua::Error::RuntimeError(
+                    "script exceeded instruction limit".into(),
+                ))
+            },
+        );
 
         let result = self
             .lua
@@ -73,17 +72,17 @@ impl LuaSandbox {
 
         // Set instruction limit hook to prevent infinite loops
         let hook_count = INSTRUCTION_LIMIT;
-        self.lua
-            .set_hook(
-                mlua::HookTriggers::new().every_nth_instruction(hook_count),
-                |_lua, _debug| {
-                    Err(mlua::Error::RuntimeError(
-                        "script exceeded instruction limit".into(),
-                    ))
-                },
-            );
+        self.lua.set_hook(
+            mlua::HookTriggers::new().every_nth_instruction(hook_count),
+            |_lua, _debug| {
+                Err(mlua::Error::RuntimeError(
+                    "script exceeded instruction limit".into(),
+                ))
+            },
+        );
 
-        let result = self.lua
+        let result = self
+            .lua
             .load(&code)
             .set_name(path.to_string_lossy())
             .exec()
@@ -109,18 +108,16 @@ impl LuaSandbox {
 
         // Set instruction limit hook to prevent infinite loops
         let hook_count = INSTRUCTION_LIMIT;
-        self.lua
-            .set_hook(
-                mlua::HookTriggers::new().every_nth_instruction(hook_count),
-                |_lua, _debug| {
-                    Err(mlua::Error::RuntimeError(
-                        "script exceeded instruction limit".into(),
-                    ))
-                },
-            );
+        self.lua.set_hook(
+            mlua::HookTriggers::new().every_nth_instruction(hook_count),
+            |_lua, _debug| {
+                Err(mlua::Error::RuntimeError(
+                    "script exceeded instruction limit".into(),
+                ))
+            },
+        );
 
-        let result = func.call(args)
-            .map_err(|e| ScriptError::Lua(e.to_string()));
+        let result = func.call(args).map_err(|e| ScriptError::Lua(e.to_string()));
 
         // Remove hook after execution
         self.lua.remove_hook();
@@ -160,7 +157,15 @@ fn remove_dangerous_functions(lua: &Lua) -> Result<(), ScriptError> {
         .get("os")
         .map_err(|e| ScriptError::Sandbox(format!("os table not found: {e}")))?;
 
-    let dangerous_os = ["execute", "remove", "rename", "exit", "tmpname", "getenv", "setlocale"];
+    let dangerous_os = [
+        "execute",
+        "remove",
+        "rename",
+        "exit",
+        "tmpname",
+        "getenv",
+        "setlocale",
+    ];
     for name in &dangerous_os {
         os_table
             .set(*name, Value::Nil)
@@ -227,8 +232,13 @@ pub fn lua_value_to_script_value(value: &Value) -> Option<rustmap_types::ScriptV
                 Some(rustmap_types::ScriptValue::Map(map))
             }
         }
-        Value::Nil | Value::LightUserData(_) | Value::Function(_) | Value::Thread(_)
-        | Value::UserData(_) | Value::Error(_) | Value::Other(..) => None,
+        Value::Nil
+        | Value::LightUserData(_)
+        | Value::Function(_)
+        | Value::Thread(_)
+        | Value::UserData(_)
+        | Value::Error(_)
+        | Value::Other(..) => None,
     }
 }
 
@@ -369,7 +379,9 @@ mod tests {
         let sandbox = LuaSandbox::new().unwrap();
         let val = sandbox.execute("return 42").unwrap();
         let sv = lua_value_to_script_value(&val).unwrap();
-        assert!(matches!(sv, rustmap_types::ScriptValue::Number(n) if (n - 42.0).abs() < f64::EPSILON));
+        assert!(
+            matches!(sv, rustmap_types::ScriptValue::Number(n) if (n - 42.0).abs() < f64::EPSILON)
+        );
     }
 
     #[test]

@@ -11,11 +11,7 @@ use rustmap_types::{HostStatus, PortState};
 use crate::tui::app::{Action, ScanPanel, ScanScreenState, Screen};
 use crate::tui::theme;
 
-pub fn render(
-    frame: &mut ratatui::Frame,
-    area: Rect,
-    state: &mut ScanScreenState,
-) {
+pub fn render(frame: &mut ratatui::Frame, area: Rect, state: &mut ScanScreenState) {
     // Layout: header(3) + main(flex) + log(8)
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -31,11 +27,7 @@ pub fn render(
     render_log(frame, chunks[2], state);
 }
 
-pub fn handle_key(
-    key: KeyEvent,
-    state: &mut ScanScreenState,
-    scan_running: bool,
-) -> Vec<Action> {
+pub fn handle_key(key: KeyEvent, state: &mut ScanScreenState, scan_running: bool) -> Vec<Action> {
     let mut actions = Vec::new();
     match key.code {
         KeyCode::Char('q') | KeyCode::Esc => actions.push(Action::SwitchScreen(Screen::Config)),
@@ -118,7 +110,11 @@ fn render_host_list(frame: &mut ratatui::Frame, area: Rect, state: &mut ScanScre
         .host_results
         .iter()
         .map(|h| {
-            let open_count = h.ports.iter().filter(|p| p.state == PortState::Open).count();
+            let open_count = h
+                .ports
+                .iter()
+                .filter(|p| p.state == PortState::Open)
+                .count();
             let status_str = match h.host_status {
                 HostStatus::Up => "up",
                 HostStatus::Down => "down",
@@ -141,11 +137,7 @@ fn render_host_list(frame: &mut ratatui::Frame, area: Rect, state: &mut ScanScre
         ],
     )
     .header(header)
-    .block(
-        Block::default()
-            .borders(Borders::ALL)
-            .title(" Hosts "),
-    )
+    .block(Block::default().borders(Borders::ALL).title(" Hosts "))
     .row_highlight_style(highlight_style);
 
     frame.render_stateful_widget(table, area, &mut state.host_table_state);
@@ -217,10 +209,7 @@ fn render_port_detail(frame: &mut ratatui::Frame, area: Rect, state: &ScanScreen
                 width: area.width.saturating_sub(2),
                 height: 1,
             };
-            frame.render_widget(
-                Paragraph::new(os_line).style(theme::TEXT_OS),
-                os_area,
-            );
+            frame.render_widget(Paragraph::new(os_line).style(theme::TEXT_OS), os_area);
         }
     } else {
         let msg = Paragraph::new("No host selected")
@@ -249,6 +238,8 @@ fn render_log(frame: &mut ratatui::Frame, area: Rect, state: &ScanScreenState) {
         .map(|l| Line::from(l.as_str()))
         .collect();
 
-    let log_widget = Paragraph::new(visible).block(block).wrap(Wrap { trim: false });
+    let log_widget = Paragraph::new(visible)
+        .block(block)
+        .wrap(Wrap { trim: false });
     frame.render_widget(log_widget, area);
 }

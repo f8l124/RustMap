@@ -28,9 +28,7 @@ pub async fn discover(opts: &CloudDiscoveryOptions) -> Result<Vec<Host>, CloudEr
         .map_err(|e| CloudError::ApiError(format!("failed to build HTTP client: {e}")))?;
 
     // Obtain OAuth2 token
-    let token_url = format!(
-        "https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
-    );
+    let token_url = format!("https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token");
     let token_resp = http
         .post(&token_url)
         .form(&[
@@ -97,7 +95,11 @@ pub async fn discover(opts: &CloudDiscoveryOptions) -> Result<Vec<Host>, CloudEr
             // Filter by region if specified
             if !opts.regions.is_empty() {
                 if let Some(ref location) = vm.location {
-                    if !opts.regions.iter().any(|r| r.eq_ignore_ascii_case(location)) {
+                    if !opts
+                        .regions
+                        .iter()
+                        .any(|r| r.eq_ignore_ascii_case(location))
+                    {
                         continue;
                     }
                 }

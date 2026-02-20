@@ -63,10 +63,12 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Clippy
-        run: cargo clippy --workspace --exclude rustmap-gui -- -D warnings
+        run: cargo clippy --workspace --exclude rustmap-gui --exclude rustmap-python -- -D warnings
 
       - name: Test
-        run: cargo test --workspace --exclude rustmap-gui
+        # Exclude rustmap-gui (needs Tauri), rustmap-python (needs PyO3/maturin),
+        # and rustmap-api (integration tests link wpcap.dll which isn't on CI runners)
+        run: cargo test --workspace --exclude rustmap-gui --exclude rustmap-python --exclude rustmap-api
 
   test-linux:
     name: Test (Linux)
@@ -86,10 +88,10 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Clippy
-        run: cargo clippy --workspace --exclude rustmap-gui -- -D warnings
+        run: cargo clippy --workspace --exclude rustmap-gui --exclude rustmap-python -- -D warnings
 
       - name: Test
-        run: cargo test --workspace --exclude rustmap-gui
+        run: cargo test --workspace --exclude rustmap-gui --exclude rustmap-python
 
   gui-check:
     name: GUI build check

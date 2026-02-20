@@ -23,9 +23,7 @@ use stream::PyScanStream;
 /// creating a new runtime for every invocation.
 fn global_runtime() -> &'static tokio::runtime::Runtime {
     static RT: std::sync::OnceLock<tokio::runtime::Runtime> = std::sync::OnceLock::new();
-    RT.get_or_init(|| {
-        tokio::runtime::Runtime::new().expect("failed to create Tokio runtime")
-    })
+    RT.get_or_init(|| tokio::runtime::Runtime::new().expect("failed to create Tokio runtime"))
 }
 
 /// Convenience scan: `result = rustmap.scan("192.168.1.1", ports="80,443")`.
@@ -164,8 +162,8 @@ fn parse_target(input: &str) -> PyResult<Vec<host::PyHost>> {
 /// Parse multiple targets: `hosts = rustmap.parse_targets(["192.168.1.0/24", "10.0.0.1"])`.
 #[pyfunction]
 fn parse_targets(inputs: Vec<String>) -> PyResult<Vec<host::PyHost>> {
-    let hosts = rustmap_core::parse_targets(&inputs)
-        .map_err(|e| RustmapError::new_err(e.to_string()))?;
+    let hosts =
+        rustmap_core::parse_targets(&inputs).map_err(|e| RustmapError::new_err(e.to_string()))?;
     Ok(hosts.into_iter().map(host::PyHost::from_inner).collect())
 }
 

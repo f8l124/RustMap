@@ -105,7 +105,10 @@ impl PyServiceInfo {
 
     fn __repr__(&self) -> String {
         let version = self.inner.version_display().unwrap_or_default();
-        format!("ServiceInfo(name='{}', version='{}')", self.inner.name, version)
+        format!(
+            "ServiceInfo(name='{}', version='{}')",
+            self.inner.name, version
+        )
     }
 }
 
@@ -146,10 +149,12 @@ impl PyTlsFingerprint {
     }
     #[getter]
     fn certificate_chain(&self) -> Option<Vec<PyCertificateInfo>> {
-        self.inner
-            .certificate_chain
-            .clone()
-            .map(|chain| chain.into_iter().map(|c| PyCertificateInfo { inner: c }).collect())
+        self.inner.certificate_chain.clone().map(|chain| {
+            chain
+                .into_iter()
+                .map(|c| PyCertificateInfo { inner: c })
+                .collect()
+        })
     }
 
     fn __repr__(&self) -> String {
@@ -160,7 +165,10 @@ impl PyTlsFingerprint {
             0x0301 => "1.0",
             _ => "unknown",
         };
-        format!("TlsFingerprint(version='{}', alpn={:?})", ver, self.inner.alpn)
+        format!(
+            "TlsFingerprint(version='{}', alpn={:?})",
+            ver, self.inner.alpn
+        )
     }
 }
 

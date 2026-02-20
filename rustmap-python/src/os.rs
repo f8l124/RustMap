@@ -24,8 +24,15 @@ impl PyOsFingerprint {
     fn __repr__(&self) -> String {
         let family = self.inner.os_family.as_deref().unwrap_or("unknown");
         let generation = self.inner.os_generation.as_deref().unwrap_or("");
-        let acc = self.inner.accuracy.map(|a| format!(" {}%", a)).unwrap_or_default();
-        format!("OsFingerprint(family='{}', generation='{}'{acc})", family, generation)
+        let acc = self
+            .inner
+            .accuracy
+            .map(|a| format!(" {}%", a))
+            .unwrap_or_default();
+        format!(
+            "OsFingerprint(family='{}', generation='{}'{acc})",
+            family, generation
+        )
     }
 }
 

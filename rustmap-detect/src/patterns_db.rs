@@ -19,9 +19,9 @@ impl PatternDatabase {
             MatchPattern::new(
                 r"SSH-([\d.]+)-OpenSSH[_-]([\w.p]+)",
                 "ssh",
-                None,         // product via literal
-                Some(2),      // version = OpenSSH version
-                Some(1),      // info = protocol version
+                None,    // product via literal
+                Some(2), // version = OpenSSH version
+                Some(1), // info = protocol version
                 Some("OpenSSH"),
             )
             .unwrap(),
@@ -104,55 +104,23 @@ impl PatternDatabase {
         );
         // SMTP with explicit mention
         patterns.push(
-            MatchPattern::new(
-                r"220[- ].*?SMTP.*?[\r\n]",
-                "smtp",
-                None,
-                None,
-                None,
-                None,
-            )
-            .unwrap(),
+            MatchPattern::new(r"220[- ].*?SMTP.*?[\r\n]", "smtp", None, None, None, None).unwrap(),
         );
 
         // --- Generic 220 fallback (after specific FTP/SMTP patterns) ---
         // If we get here, it's likely FTP (most SMTP servers mention SMTP/ESMTP)
         patterns.push(
-            MatchPattern::new(
-                r"220[- ](.+?)[\r\n]",
-                "ftp",
-                None,
-                None,
-                Some(1),
-                None,
-            )
-            .unwrap(),
+            MatchPattern::new(r"220[- ](.+?)[\r\n]", "ftp", None, None, Some(1), None).unwrap(),
         );
 
         // --- POP3 ---
         patterns.push(
-            MatchPattern::new(
-                r"\+OK\s+(.+?)[\r\n]",
-                "pop3",
-                None,
-                None,
-                Some(1),
-                None,
-            )
-            .unwrap(),
+            MatchPattern::new(r"\+OK\s+(.+?)[\r\n]", "pop3", None, None, Some(1), None).unwrap(),
         );
 
         // --- IMAP ---
         patterns.push(
-            MatchPattern::new(
-                r"\* OK\s+(.+?)[\r\n]",
-                "imap",
-                None,
-                None,
-                Some(1),
-                None,
-            )
-            .unwrap(),
+            MatchPattern::new(r"\* OK\s+(.+?)[\r\n]", "imap", None, None, Some(1), None).unwrap(),
         );
 
         // --- MySQL ---
@@ -275,55 +243,22 @@ impl PatternDatabase {
         );
         // Generic Server header
         patterns.push(
-            MatchPattern::new(
-                r"Server: ([^\r\n]+)",
-                "http",
-                Some(1),
-                None,
-                None,
-                None,
-            )
-            .unwrap(),
+            MatchPattern::new(r"Server: ([^\r\n]+)", "http", Some(1), None, None, None).unwrap(),
         );
         // HTTP response without Server header
-        patterns.push(
-            MatchPattern::new(
-                r"^HTTP/[\d.]+ \d+",
-                "http",
-                None,
-                None,
-                None,
-                None,
-            )
-            .unwrap(),
-        );
+        patterns
+            .push(MatchPattern::new(r"^HTTP/[\d.]+ \d+", "http", None, None, None, None).unwrap());
 
         // --- HTTP/2 ---
         // HTTP/2 SETTINGS frame response (frame type 0x04)
         patterns.push(
-            MatchPattern::new(
-                r"(?s)^.{3}\x04",
-                "http",
-                None,
-                None,
-                None,
-                Some("HTTP/2"),
-            )
-            .unwrap(),
+            MatchPattern::new(r"(?s)^.{3}\x04", "http", None, None, None, Some("HTTP/2")).unwrap(),
         );
 
         // --- Telnet ---
         // Telnet negotiation starts with IAC (0xFF)
         patterns.push(
-            MatchPattern::new(
-                r"(?s)^\xff[\xfb-\xfe]",
-                "telnet",
-                None,
-                None,
-                None,
-                None,
-            )
-            .unwrap(),
+            MatchPattern::new(r"(?s)^\xff[\xfb-\xfe]", "telnet", None, None, None, None).unwrap(),
         );
 
         Self { patterns }
@@ -409,7 +344,8 @@ mod tests {
     #[test]
     fn match_nginx_server_header() {
         let db = PatternDatabase::new();
-        let response = b"HTTP/1.1 200 OK\r\nServer: nginx/1.24.0\r\nContent-Type: text/html\r\n\r\n";
+        let response =
+            b"HTTP/1.1 200 OK\r\nServer: nginx/1.24.0\r\nContent-Type: text/html\r\n\r\n";
         let result = db.match_data(response, DetectionMethod::Probe).unwrap();
 
         assert_eq!(result.name, "http");

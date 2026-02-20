@@ -141,9 +141,7 @@ fn resolve_hostname(hostname: &str) -> Result<Vec<Host>, TargetParseError> {
     let addr_str = format!("{hostname}:0");
     let addrs: Vec<_> = addr_str
         .to_socket_addrs()
-        .map_err(|e| {
-            TargetParseError::DnsResolutionFailed(hostname.to_string(), e.to_string())
-        })?
+        .map_err(|e| TargetParseError::DnsResolutionFailed(hostname.to_string(), e.to_string()))?
         .collect();
 
     if addrs.is_empty() {
@@ -220,7 +218,11 @@ async fn resolve_hostname_async(
     dns: &DnsConfig,
 ) -> Result<Vec<Host>, TargetParseError> {
     // Treat timeout_ms=0 as the default (5 seconds) to avoid instant failure
-    let timeout_dur = Duration::from_millis(if dns.timeout_ms == 0 { 5000 } else { dns.timeout_ms });
+    let timeout_dur = Duration::from_millis(if dns.timeout_ms == 0 {
+        5000
+    } else {
+        dns.timeout_ms
+    });
 
     if dns.servers.is_empty() {
         // System resolver — wrap sync call in spawn_blocking with timeout
@@ -231,10 +233,15 @@ async fn resolve_hostname_async(
             tokio::task::spawn_blocking(move || resolve_hostname(&hostname_owned)),
         )
         .await
-        .map_err(|_| TargetParseError::DnsResolutionFailed(
-            hostname_err.clone(),
-            format!("system DNS resolution timed out after {}ms", timeout_dur.as_millis()),
-        ))?
+        .map_err(|_| {
+            TargetParseError::DnsResolutionFailed(
+                hostname_err.clone(),
+                format!(
+                    "system DNS resolution timed out after {}ms",
+                    timeout_dur.as_millis()
+                ),
+            )
+        })?
         .map_err(|e| TargetParseError::DnsResolutionFailed(hostname_err, e.to_string()))?
     } else {
         resolve_hostname_custom(hostname, dns).await
@@ -246,8 +253,8 @@ async fn resolve_hostname_custom(
     hostname: &str,
     dns: &DnsConfig,
 ) -> Result<Vec<Host>, TargetParseError> {
-    use hickory_resolver::config::{NameServerConfig, Protocol, ResolverConfig, ResolverOpts};
     use hickory_resolver::TokioAsyncResolver;
+    use hickory_resolver::config::{NameServerConfig, Protocol, ResolverConfig, ResolverOpts};
 
     let mut config = ResolverConfig::new();
     for server in &dns.servers {
@@ -271,13 +278,18 @@ async fn resolve_hostname_custom(
 
     let mut opts = ResolverOpts::default();
     // Treat timeout_ms=0 as the default (5 seconds) to avoid instant failure
-    opts.timeout = Duration::from_millis(if dns.timeout_ms == 0 { 5000 } else { dns.timeout_ms });
+    opts.timeout = Duration::from_millis(if dns.timeout_ms == 0 {
+        5000
+    } else {
+        dns.timeout_ms
+    });
     opts.attempts = 1; // Single attempt for predictable wall-clock behavior
 
     let resolver = TokioAsyncResolver::tokio(config, opts);
-    let response = resolver.lookup_ip(hostname).await.map_err(|e| {
-        TargetParseError::DnsResolutionFailed(hostname.to_string(), e.to_string())
-    })?;
+    let response = resolver
+        .lookup_ip(hostname)
+        .await
+        .map_err(|e| TargetParseError::DnsResolutionFailed(hostname.to_string(), e.to_string()))?;
 
     let mut seen = std::collections::HashSet::new();
     let mut hosts = Vec::new();
@@ -357,7 +369,10 @@ mod tests {
         let result = parse_target("0.0.0.0/0");
         assert!(result.is_err());
         let err = result.unwrap_err().to_string();
-        assert!(err.contains("too large"), "error should mention size: {err}");
+        assert!(
+            err.contains("too large"),
+            "error should mention size: {err}"
+        );
 
         // /7 should also be rejected (below /8 minimum)
         assert!(parse_target("10.0.0.0/7").is_err());
@@ -405,20 +420,14 @@ mod tests {
 
     #[test]
     fn parse_targets_multiple() {
-        let inputs = vec![
-            "192.168.1.1".to_string(),
-            "10.0.0.1".to_string(),
-        ];
+        let inputs = vec!["192.168.1.1".to_string(), "10.0.0.1".to_string()];
         let hosts = parse_targets(&inputs).unwrap();
         assert_eq!(hosts.len(), 2);
     }
 
     #[test]
     fn parse_targets_mixed() {
-        let inputs = vec![
-            "192.168.1.1-3".to_string(),
-            "10.0.0.1".to_string(),
-        ];
+        let inputs = vec!["192.168.1.1-3".to_string(), "10.0.0.1".to_string()];
         let hosts = parse_targets(&inputs).unwrap();
         assert_eq!(hosts.len(), 4);
     }

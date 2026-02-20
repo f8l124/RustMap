@@ -85,7 +85,10 @@ impl PyGeoInfo {
         let parts: Vec<String> = [
             self.inner.country.as_deref().map(|s| s.to_string()),
             self.inner.city.as_deref().map(|s| s.to_string()),
-            self.inner.as_org.as_deref().map(|_| format!("AS{}", self.inner.asn.unwrap_or(0))),
+            self.inner
+                .as_org
+                .as_deref()
+                .map(|_| format!("AS{}", self.inner.asn.unwrap_or(0))),
         ]
         .into_iter()
         .flatten()

@@ -11,9 +11,7 @@ pub async fn discover(opts: &CloudDiscoveryOptions) -> Result<Vec<Host>, CloudEr
     let project = std::env::var("GOOGLE_CLOUD_PROJECT")
         .or_else(|_| std::env::var("GCLOUD_PROJECT"))
         .map_err(|_| {
-            CloudError::AuthError(
-                "GOOGLE_CLOUD_PROJECT or GCLOUD_PROJECT not set".into(),
-            )
+            CloudError::AuthError("GOOGLE_CLOUD_PROJECT or GCLOUD_PROJECT not set".into())
         })?;
 
     let access_token = get_access_token().await?;
@@ -66,10 +64,15 @@ pub async fn discover(opts: &CloudDiscoveryOptions) -> Result<Vec<Host>, CloudEr
                         // Zone format: projects/PROJECT/zones/ZONE
                         let zone_name = zone.rsplit('/').next().unwrap_or(zone);
                         // Region is zone minus the last -X suffix
-                        let region = zone_name.rfind('-')
+                        let region = zone_name
+                            .rfind('-')
                             .map(|i| &zone_name[..i])
                             .unwrap_or(zone_name);
-                        if !opts.regions.iter().any(|r| r == region || zone_name.starts_with(r)) {
+                        if !opts
+                            .regions
+                            .iter()
+                            .any(|r| r == region || zone_name.starts_with(r))
+                        {
                             continue;
                         }
                     }
@@ -82,9 +85,7 @@ pub async fn discover(opts: &CloudDiscoveryOptions) -> Result<Vec<Host>, CloudEr
                         let ip_str = iface
                             .access_configs
                             .as_ref()
-                            .and_then(|configs| {
-                                configs.iter().find_map(|c| c.nat_ip.as_deref())
-                            })
+                            .and_then(|configs| configs.iter().find_map(|c| c.nat_ip.as_deref()))
                             .or(iface.network_ip.as_deref());
 
                         if let Some(ip_str) = ip_str {
@@ -121,8 +122,7 @@ async fn get_access_token() -> Result<String, CloudError> {
         .timeout(std::time::Duration::from_secs(3))
         .build()
         .map_err(|e| CloudError::AuthError(format!("failed to build HTTP client: {e}")))?;
-    let metadata_url =
-        "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token";
+    let metadata_url = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token";
 
     if let Ok(resp) = http
         .get(metadata_url)

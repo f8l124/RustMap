@@ -196,7 +196,10 @@ impl ScanStore {
     pub fn open(path: &Path) -> Result<Self, DbError> {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent).map_err(|e| {
-                DbError::Other(format!("failed to create db directory {}: {e}", parent.display()))
+                DbError::Other(format!(
+                    "failed to create db directory {}: {e}",
+                    parent.display()
+                ))
             })?;
         }
         let conn = Connection::open(path)?;
@@ -253,8 +256,7 @@ impl ScanStore {
             let hostname = host_result.host.hostname.as_deref();
             let host_status = format!("{}", host_result.host_status);
             let scan_duration_ms = host_result.scan_duration.as_millis() as i64;
-            let discovery_latency_ms =
-                host_result.discovery_latency.map(|d| d.as_millis() as i64);
+            let discovery_latency_ms = host_result.discovery_latency.map(|d| d.as_millis() as i64);
             let open_port_count = host_result
                 .ports
                 .iter()
@@ -310,7 +312,11 @@ impl ScanStore {
         }
 
         tx.commit()?;
-        debug!(scan_id, hosts = result.hosts.len(), "scan saved to database");
+        debug!(
+            scan_id,
+            hosts = result.hosts.len(),
+            "scan saved to database"
+        );
         Ok(())
     }
 
@@ -488,11 +494,7 @@ impl ScanStore {
     }
 
     /// Compute a diff between two scans.
-    pub fn diff_scans(
-        &self,
-        old_scan_id: &str,
-        new_scan_id: &str,
-    ) -> Result<ScanDiff, DbError> {
+    pub fn diff_scans(&self, old_scan_id: &str, new_scan_id: &str) -> Result<ScanDiff, DbError> {
         // Collect host IPs from each scan
         let old_hosts = self.hosts_in_scan(old_scan_id)?;
         let new_hosts = self.hosts_in_scan(new_scan_id)?;
@@ -707,7 +709,11 @@ impl ScanStore {
                 port as i64,
                 protocol,
                 i64::from(was_open),
-                if was_open { Some(timestamp as i64) } else { None::<i64> },
+                if was_open {
+                    Some(timestamp as i64)
+                } else {
+                    None::<i64>
+                },
                 timestamp as i64,
             ],
         )?;
@@ -810,9 +816,7 @@ impl ScanStore {
 
         // Compute suggested initial RTO from historical SRTT (SRTT * 3, conservative)
         let suggested_rto = if !history.is_empty() {
-            let srtt_values: Vec<i64> = history.iter()
-                .filter_map(|h| h.avg_srtt_us)
-                .collect();
+            let srtt_values: Vec<i64> = history.iter().filter_map(|h| h.avg_srtt_us).collect();
             if !srtt_values.is_empty() {
                 let avg_srtt = srtt_values.iter().sum::<i64>() / srtt_values.len() as i64;
                 if avg_srtt > 0 {
@@ -829,8 +833,7 @@ impl ScanStore {
 
         // Compute suggested initial cwnd from historical final cwnd
         let suggested_cwnd = if !history.is_empty() {
-            let avg_cwnd = history.iter().map(|h| h.avg_cwnd).sum::<f64>()
-                / history.len() as f64;
+            let avg_cwnd = history.iter().map(|h| h.avg_cwnd).sum::<f64>() / history.len() as f64;
             Some(avg_cwnd)
         } else {
             None
@@ -962,7 +965,9 @@ impl ScanStore {
                 }
                 (Some(ref cached), Some(_svc)) => {
                     // Same service name — check version
-                    let new_version = port.service_info.as_ref()
+                    let new_version = port
+                        .service_info
+                        .as_ref()
                         .and_then(|si| si.version.as_deref());
                     if new_version != cached.version.as_deref() && new_version.is_some() {
                         changes.push(ServiceChange {
@@ -999,12 +1004,14 @@ impl ScanStore {
         })?;
         for row in rows {
             let (port_i64, protocol, service_name) = row?;
-            let Ok(port_num) = u16::try_from(port_i64) else { continue };
+            let Ok(port_num) = u16::try_from(port_i64) else {
+                continue;
+            };
             if !seen_cached_ports.contains(&(port_num, protocol.clone())) {
                 // This cached service was not seen as open in the current scan
-                let is_scanned = ports.iter().any(|p| {
-                    p.number == port_num && format!("{}", p.protocol) == protocol
-                });
+                let is_scanned = ports
+                    .iter()
+                    .any(|p| p.number == port_num && format!("{}", p.protocol) == protocol);
                 if is_scanned {
                     changes.push(ServiceChange {
                         ip: ip.to_string(),
@@ -1070,15 +1077,18 @@ impl ScanStore {
                 if was_up { 1i64 } else { 0 },
                 if was_up { 0i64 } else { 1 },
                 discovery_ms,
-                if was_up { Some(timestamp as i64) } else { None::<i64> },
+                if was_up {
+                    Some(timestamp as i64)
+                } else {
+                    None::<i64>
+                },
                 timestamp as i64,
             ],
         )?;
 
         // Recompute behavior classification
-        let mut stmt = tx.prepare(
-            "SELECT times_up, times_scanned FROM host_profiles WHERE ip = ?1",
-        )?;
+        let mut stmt =
+            tx.prepare("SELECT times_up, times_scanned FROM host_profiles WHERE ip = ?1")?;
         let (times_up, times_scanned): (i64, i64) =
             stmt.query_row(params![ip], |row| Ok((row.get(0)?, row.get(1)?)))?;
         drop(stmt);
@@ -1115,11 +1125,7 @@ impl ScanStore {
     }
 
     /// Get IPs in a subnet that are always up (for skip-discovery optimization).
-    pub fn hosts_always_up(
-        &self,
-        subnet: &str,
-        min_scans: u64,
-    ) -> Result<Vec<String>, DbError> {
+    pub fn hosts_always_up(&self, subnet: &str, min_scans: u64) -> Result<Vec<String>, DbError> {
         let mut stmt = self.conn.prepare(
             "SELECT ip FROM host_profiles \
              WHERE subnet = ?1 AND behavior = 'always_up' AND times_scanned >= ?2",
@@ -1178,11 +1184,7 @@ impl ScanStore {
     }
 
     /// Update jitter and stability score on the network profile.
-    pub fn update_network_stability(
-        &self,
-        subnet: &str,
-        jitter_us: f64,
-    ) -> Result<(), DbError> {
+    pub fn update_network_stability(&self, subnet: &str, jitter_us: f64) -> Result<(), DbError> {
         // Get current profile data; return Ok if no profile exists yet
         let mut stmt = self.conn.prepare(
             "SELECT avg_rtt_ms, avg_loss_rate, avg_jitter_us FROM network_profiles WHERE subnet = ?1",
@@ -1268,7 +1270,15 @@ impl ScanStore {
              ON CONFLICT(cve_id) DO UPDATE SET
                 cvss_score = ?2, cvss_vector = ?3, description = ?4,
                 published_date = ?5, last_modified = ?6, source = ?7",
-            params![cve_id, cvss_score, cvss_vector, description, published_date, last_modified, source],
+            params![
+                cve_id,
+                cvss_score,
+                cvss_vector,
+                description,
+                published_date,
+                last_modified,
+                source
+            ],
         )?;
         Ok(())
     }
@@ -1370,10 +1380,7 @@ impl ScanStore {
     }
 
     /// Bulk import CVEs (entry + rules). Returns number of entries inserted.
-    pub fn bulk_import_cves(
-        &self,
-        entries: &[(CveEntry, Vec<CveRule>)],
-    ) -> Result<usize, DbError> {
+    pub fn bulk_import_cves(&self, entries: &[(CveEntry, Vec<CveRule>)]) -> Result<usize, DbError> {
         let tx = self.conn.unchecked_transaction()?;
         let mut count = 0;
 
@@ -1426,10 +1433,7 @@ impl ScanStore {
 
     /// Bulk import CISA KEV entries. Uses COALESCE to preserve existing NVD data
     /// (CVSS scores, vectors, detailed descriptions) while adding KEV-sourced rules.
-    pub fn bulk_import_kev(
-        &self,
-        entries: &[(CveEntry, Vec<CveRule>)],
-    ) -> Result<usize, DbError> {
+    pub fn bulk_import_kev(&self, entries: &[(CveEntry, Vec<CveRule>)]) -> Result<usize, DbError> {
         let tx = self.conn.unchecked_transaction()?;
         let mut count = 0;
 
@@ -1700,8 +1704,7 @@ impl ScanStore {
             )) => {
                 let targets: Vec<String> = serde_json::from_str(&targets_json)?;
                 let completed_hosts: Vec<String> = serde_json::from_str(&completed_json)?;
-                let partial_results: Vec<HostScanResult> =
-                    serde_json::from_str(&results_json)?;
+                let partial_results: Vec<HostScanResult> = serde_json::from_str(&results_json)?;
 
                 Ok(Some(ScanCheckpoint {
                     scan_id,
@@ -1774,10 +1777,9 @@ impl ScanStore {
                 timing,
             ) = row?;
 
-            let targets: Vec<String> = serde_json::from_str(&targets_json)
-                .unwrap_or_default();
-            let completed_hosts: Vec<String> = serde_json::from_str(&completed_json)
-                .unwrap_or_default();
+            let targets: Vec<String> = serde_json::from_str(&targets_json).unwrap_or_default();
+            let completed_hosts: Vec<String> =
+                serde_json::from_str(&completed_json).unwrap_or_default();
             let partial_results: Vec<HostScanResult> =
                 serde_json::from_str(&results_json).unwrap_or_default();
 
@@ -2156,10 +2158,7 @@ mod tests {
             .save_scan("scan-new", &result, 3000, 4000, None)
             .unwrap();
 
-        let summary = store
-            .last_scan_for_host("192.168.1.1")
-            .unwrap()
-            .unwrap();
+        let summary = store.last_scan_for_host("192.168.1.1").unwrap().unwrap();
         assert_eq!(summary.scan_id, "scan-new");
     }
 
@@ -2168,8 +2167,12 @@ mod tests {
         let store = ScanStore::open_in_memory().unwrap();
         let result = mock_scan_result();
 
-        store.save_scan("scan-first", &result, 1000, 2000, None).unwrap();
-        store.save_scan("scan-second", &result, 3000, 4000, None).unwrap();
+        store
+            .save_scan("scan-first", &result, 1000, 2000, None)
+            .unwrap();
+        store
+            .save_scan("scan-second", &result, 3000, 4000, None)
+            .unwrap();
 
         let id = store.last_scan_id_for_host("192.168.1.1").unwrap().unwrap();
         assert_eq!(id, "scan-second");
@@ -2183,41 +2186,57 @@ mod tests {
         let store = ScanStore::open_in_memory().unwrap();
         let result = mock_scan_result();
 
-        store.save_scan("scan-a", &result, 1000, 2000, None).unwrap();
-        store.save_scan("scan-b", &result, 3000, 4000, None).unwrap();
+        store
+            .save_scan("scan-a", &result, 1000, 2000, None)
+            .unwrap();
+        store
+            .save_scan("scan-b", &result, 3000, 4000, None)
+            .unwrap();
 
         // Excluding scan-b, should get scan-a
-        let prev = store.previous_scan_id_for_host("192.168.1.1", "scan-b").unwrap().unwrap();
+        let prev = store
+            .previous_scan_id_for_host("192.168.1.1", "scan-b")
+            .unwrap()
+            .unwrap();
         assert_eq!(prev, "scan-a");
 
         // Excluding scan-a, should get scan-b
-        let prev = store.previous_scan_id_for_host("192.168.1.1", "scan-a").unwrap().unwrap();
+        let prev = store
+            .previous_scan_id_for_host("192.168.1.1", "scan-a")
+            .unwrap()
+            .unwrap();
         assert_eq!(prev, "scan-b");
 
         // Only one scan exists after excluding both? Excluding scan-a leaves scan-b
         // If only one scan, excluding it returns None
         let store2 = ScanStore::open_in_memory().unwrap();
-        store2.save_scan("only-scan", &result, 1000, 2000, None).unwrap();
-        let prev = store2.previous_scan_id_for_host("192.168.1.1", "only-scan").unwrap();
+        store2
+            .save_scan("only-scan", &result, 1000, 2000, None)
+            .unwrap();
+        let prev = store2
+            .previous_scan_id_for_host("192.168.1.1", "only-scan")
+            .unwrap();
         assert!(prev.is_none());
     }
 
     #[test]
     fn recommend_timing_values() {
-        assert_eq!(recommend_timing(5.0, 0.0), 5);     // LAN -> Insane
-        assert_eq!(recommend_timing(50.0, 0.0), 4);    // Fast -> Aggressive
-        assert_eq!(recommend_timing(150.0, 0.0), 3);   // Medium -> Normal
-        assert_eq!(recommend_timing(600.0, 0.0), 2);   // Slow -> Polite
-        assert_eq!(recommend_timing(10.0, 0.15), 2);   // Lossy -> Polite
-        assert_eq!(recommend_timing(1500.0, 0.0), 1);  // Very slow -> Sneaky
-        assert_eq!(recommend_timing(10.0, 0.30), 1);   // Very lossy -> Sneaky
+        assert_eq!(recommend_timing(5.0, 0.0), 5); // LAN -> Insane
+        assert_eq!(recommend_timing(50.0, 0.0), 4); // Fast -> Aggressive
+        assert_eq!(recommend_timing(150.0, 0.0), 3); // Medium -> Normal
+        assert_eq!(recommend_timing(600.0, 0.0), 2); // Slow -> Polite
+        assert_eq!(recommend_timing(10.0, 0.15), 2); // Lossy -> Polite
+        assert_eq!(recommend_timing(1500.0, 0.0), 1); // Very slow -> Sneaky
+        assert_eq!(recommend_timing(10.0, 0.30), 1); // Very lossy -> Sneaky
     }
 
     #[test]
     fn save_scan_timing_stores_data() {
         let store = ScanStore::open_in_memory().unwrap();
         let result = mock_scan_result();
-        store.save_scan("scan-t1", &result, 1000, 2000, Some(3)).unwrap();
+        store
+            .save_scan("scan-t1", &result, 1000, 2000, Some(3))
+            .unwrap();
 
         store
             .save_scan_timing("scan-t1", Some(5000), 15000, 4.0, 100, 95, 5, 0.05, 2000)
@@ -2240,7 +2259,9 @@ mod tests {
     fn save_scan_timing_null_srtt() {
         let store = ScanStore::open_in_memory().unwrap();
         let result = mock_scan_result();
-        store.save_scan("scan-t2", &result, 1000, 2000, None).unwrap();
+        store
+            .save_scan("scan-t2", &result, 1000, 2000, None)
+            .unwrap();
 
         store
             .save_scan_timing("scan-t2", None, 3000000, 100.0, 50, 50, 0, 0.0, 2000)
@@ -2266,7 +2287,11 @@ mod tests {
 
         // Zero probes: loss = 0.0
         let zero_sent: u64 = 0;
-        let loss_zero = if zero_sent > 0 { 1.0 - (0.0_f64 / zero_sent as f64) } else { 0.0 };
+        let loss_zero = if zero_sent > 0 {
+            1.0 - (0.0_f64 / zero_sent as f64)
+        } else {
+            0.0
+        };
         assert_eq!(loss_zero, 0.0);
     }
 
@@ -2274,9 +2299,15 @@ mod tests {
     fn update_port_history_increments() {
         let store = ScanStore::open_in_memory().unwrap();
 
-        store.update_port_history("10.0.0.1", "10.0.0.0/24", 80, "tcp", true, 1000).unwrap();
-        store.update_port_history("10.0.0.1", "10.0.0.0/24", 80, "tcp", true, 2000).unwrap();
-        store.update_port_history("10.0.0.1", "10.0.0.0/24", 80, "tcp", false, 3000).unwrap();
+        store
+            .update_port_history("10.0.0.1", "10.0.0.0/24", 80, "tcp", true, 1000)
+            .unwrap();
+        store
+            .update_port_history("10.0.0.1", "10.0.0.0/24", 80, "tcp", true, 2000)
+            .unwrap();
+        store
+            .update_port_history("10.0.0.1", "10.0.0.0/24", 80, "tcp", false, 3000)
+            .unwrap();
 
         let mut stmt = store.conn.prepare(
             "SELECT times_open, times_scanned FROM port_history WHERE ip = ?1 AND port_number = ?2"
@@ -2295,12 +2326,20 @@ mod tests {
 
         // Port 80: open 3/3 = 1.0
         for _ in 0..3 {
-            store.update_port_history("10.0.0.1", "10.0.0.0/24", 80, "tcp", true, 1000).unwrap();
+            store
+                .update_port_history("10.0.0.1", "10.0.0.0/24", 80, "tcp", true, 1000)
+                .unwrap();
         }
         // Port 22: open 1/3 = 0.33
-        store.update_port_history("10.0.0.1", "10.0.0.0/24", 22, "tcp", true, 1000).unwrap();
-        store.update_port_history("10.0.0.1", "10.0.0.0/24", 22, "tcp", false, 2000).unwrap();
-        store.update_port_history("10.0.0.1", "10.0.0.0/24", 22, "tcp", false, 3000).unwrap();
+        store
+            .update_port_history("10.0.0.1", "10.0.0.0/24", 22, "tcp", true, 1000)
+            .unwrap();
+        store
+            .update_port_history("10.0.0.1", "10.0.0.0/24", 22, "tcp", false, 2000)
+            .unwrap();
+        store
+            .update_port_history("10.0.0.1", "10.0.0.0/24", 22, "tcp", false, 3000)
+            .unwrap();
 
         let predictions = store.predict_ports_for_host("10.0.0.1", 10).unwrap();
         assert_eq!(predictions.len(), 2);
@@ -2315,11 +2354,19 @@ mod tests {
         let store = ScanStore::open_in_memory().unwrap();
 
         // Two hosts in same subnet, both have port 443 open
-        store.update_port_history("10.0.0.1", "10.0.0.0/24", 443, "tcp", true, 1000).unwrap();
-        store.update_port_history("10.0.0.2", "10.0.0.0/24", 443, "tcp", true, 1000).unwrap();
+        store
+            .update_port_history("10.0.0.1", "10.0.0.0/24", 443, "tcp", true, 1000)
+            .unwrap();
+        store
+            .update_port_history("10.0.0.2", "10.0.0.0/24", 443, "tcp", true, 1000)
+            .unwrap();
         // Port 22 only open on one host
-        store.update_port_history("10.0.0.1", "10.0.0.0/24", 22, "tcp", true, 1000).unwrap();
-        store.update_port_history("10.0.0.2", "10.0.0.0/24", 22, "tcp", false, 1000).unwrap();
+        store
+            .update_port_history("10.0.0.1", "10.0.0.0/24", 22, "tcp", true, 1000)
+            .unwrap();
+        store
+            .update_port_history("10.0.0.2", "10.0.0.0/24", 22, "tcp", false, 1000)
+            .unwrap();
 
         let predictions = store.predict_ports_for_subnet("10.0.0.0/24", 10).unwrap();
         assert_eq!(predictions.len(), 2);
@@ -2337,13 +2384,20 @@ mod tests {
         let store = ScanStore::open_in_memory().unwrap();
 
         // Insert same port twice — should upsert, not create duplicate
-        store.update_port_history("10.0.0.1", "10.0.0.0/24", 80, "tcp", true, 1000).unwrap();
-        store.update_port_history("10.0.0.1", "10.0.0.0/24", 80, "tcp", false, 2000).unwrap();
+        store
+            .update_port_history("10.0.0.1", "10.0.0.0/24", 80, "tcp", true, 1000)
+            .unwrap();
+        store
+            .update_port_history("10.0.0.1", "10.0.0.0/24", 80, "tcp", false, 2000)
+            .unwrap();
 
-        let mut stmt = store.conn.prepare(
-            "SELECT COUNT(*) FROM port_history WHERE ip = ?1 AND port_number = ?2"
-        ).unwrap();
-        let count: i64 = stmt.query_row(params!["10.0.0.1", 80i64], |row| row.get(0)).unwrap();
+        let mut stmt = store
+            .conn
+            .prepare("SELECT COUNT(*) FROM port_history WHERE ip = ?1 AND port_number = ?2")
+            .unwrap();
+        let count: i64 = stmt
+            .query_row(params!["10.0.0.1", 80i64], |row| row.get(0))
+            .unwrap();
         assert_eq!(count, 1, "should be exactly one row after upsert");
     }
 
@@ -2362,12 +2416,31 @@ mod tests {
         // Build up enough history for confidence
         for i in 0..5 {
             let scan_id = format!("scan-ltp-{i}");
-            store.save_scan(&scan_id, &result, 1000 + i * 1000, 2000 + i * 1000, Some(3)).unwrap();
-            store.update_network_profile("192.168.1.0/24", 25.0, 0.02).unwrap();
-            store.save_scan_timing(&scan_id, Some(25000), 75000, 8.0, 100, 98, 2, 0.02, 2000 + i * 1000).unwrap();
+            store
+                .save_scan(&scan_id, &result, 1000 + i * 1000, 2000 + i * 1000, Some(3))
+                .unwrap();
+            store
+                .update_network_profile("192.168.1.0/24", 25.0, 0.02)
+                .unwrap();
+            store
+                .save_scan_timing(
+                    &scan_id,
+                    Some(25000),
+                    75000,
+                    8.0,
+                    100,
+                    98,
+                    2,
+                    0.02,
+                    2000 + i * 1000,
+                )
+                .unwrap();
         }
 
-        let learned = store.learned_timing_params("192.168.1.0/24").unwrap().unwrap();
+        let learned = store
+            .learned_timing_params("192.168.1.0/24")
+            .unwrap()
+            .unwrap();
         assert!(learned.confidence >= 0.3);
         assert!(learned.suggested_initial_rto_us.is_some());
         assert!(learned.suggested_initial_cwnd.is_some());
@@ -2388,7 +2461,9 @@ mod tests {
     fn learned_params_confidence_threshold() {
         let store = ScanStore::open_in_memory().unwrap();
         // Only 1 scan = confidence 0.1 (below 0.3 threshold)
-        store.update_network_profile("10.0.0.0/24", 10.0, 0.0).unwrap();
+        store
+            .update_network_profile("10.0.0.0/24", 10.0, 0.0)
+            .unwrap();
         let learned = store.learned_timing_params("10.0.0.0/24").unwrap().unwrap();
         assert!(learned.confidence < 0.3);
     }
@@ -2399,9 +2474,20 @@ mod tests {
     fn update_service_cache_creates() {
         let store = ScanStore::open_in_memory().unwrap();
         store
-            .update_service_cache("10.0.0.1", 80, "tcp", "http", Some("Apache"), Some("2.4"), 1000)
+            .update_service_cache(
+                "10.0.0.1",
+                80,
+                "tcp",
+                "http",
+                Some("Apache"),
+                Some("2.4"),
+                1000,
+            )
             .unwrap();
-        let cached = store.get_cached_service("10.0.0.1", 80, "tcp").unwrap().unwrap();
+        let cached = store
+            .get_cached_service("10.0.0.1", 80, "tcp")
+            .unwrap()
+            .unwrap();
         assert_eq!(cached.service_name, "http");
         assert_eq!(cached.product.as_deref(), Some("Apache"));
         assert_eq!(cached.version.as_deref(), Some("2.4"));
@@ -2413,12 +2499,31 @@ mod tests {
     fn update_service_cache_updates() {
         let store = ScanStore::open_in_memory().unwrap();
         store
-            .update_service_cache("10.0.0.1", 80, "tcp", "http", Some("Apache"), Some("2.4"), 1000)
+            .update_service_cache(
+                "10.0.0.1",
+                80,
+                "tcp",
+                "http",
+                Some("Apache"),
+                Some("2.4"),
+                1000,
+            )
             .unwrap();
         store
-            .update_service_cache("10.0.0.1", 80, "tcp", "http", Some("Apache"), Some("2.6"), 2000)
+            .update_service_cache(
+                "10.0.0.1",
+                80,
+                "tcp",
+                "http",
+                Some("Apache"),
+                Some("2.6"),
+                2000,
+            )
             .unwrap();
-        let cached = store.get_cached_service("10.0.0.1", 80, "tcp").unwrap().unwrap();
+        let cached = store
+            .get_cached_service("10.0.0.1", 80, "tcp")
+            .unwrap()
+            .unwrap();
         assert_eq!(cached.version.as_deref(), Some("2.6"));
         assert_eq!(cached.times_seen, 2);
         assert_eq!(cached.last_seen, 2000);
@@ -2479,7 +2584,15 @@ mod tests {
     fn detect_version_change() {
         let store = ScanStore::open_in_memory().unwrap();
         store
-            .update_service_cache("10.0.0.1", 22, "tcp", "ssh", Some("OpenSSH"), Some("8.9"), 1000)
+            .update_service_cache(
+                "10.0.0.1",
+                22,
+                "tcp",
+                "ssh",
+                Some("OpenSSH"),
+                Some("8.9"),
+                1000,
+            )
             .unwrap();
         let ports = vec![Port {
             number: 22,
@@ -2647,7 +2760,9 @@ mod tests {
     #[test]
     fn update_time_pattern_creates() {
         let store = ScanStore::open_in_memory().unwrap();
-        store.update_time_pattern("10.0.0.0/24", 14, 25.0, 0.01).unwrap();
+        store
+            .update_time_pattern("10.0.0.0/24", 14, 25.0, 0.01)
+            .unwrap();
         let patterns = store.get_time_patterns("10.0.0.0/24").unwrap();
         assert_eq!(patterns.len(), 1);
         assert_eq!(patterns[0].hour, 14);
@@ -2658,8 +2773,12 @@ mod tests {
     #[test]
     fn update_time_pattern_averages() {
         let store = ScanStore::open_in_memory().unwrap();
-        store.update_time_pattern("10.0.0.0/24", 14, 20.0, 0.01).unwrap();
-        store.update_time_pattern("10.0.0.0/24", 14, 40.0, 0.05).unwrap();
+        store
+            .update_time_pattern("10.0.0.0/24", 14, 20.0, 0.01)
+            .unwrap();
+        store
+            .update_time_pattern("10.0.0.0/24", 14, 40.0, 0.05)
+            .unwrap();
         let patterns = store.get_time_patterns("10.0.0.0/24").unwrap();
         assert_eq!(patterns.len(), 1);
         assert_eq!(patterns[0].sample_count, 2);
@@ -2670,9 +2789,15 @@ mod tests {
     #[test]
     fn get_time_patterns_ordered() {
         let store = ScanStore::open_in_memory().unwrap();
-        store.update_time_pattern("10.0.0.0/24", 22, 30.0, 0.01).unwrap();
-        store.update_time_pattern("10.0.0.0/24", 8, 15.0, 0.01).unwrap();
-        store.update_time_pattern("10.0.0.0/24", 14, 20.0, 0.01).unwrap();
+        store
+            .update_time_pattern("10.0.0.0/24", 22, 30.0, 0.01)
+            .unwrap();
+        store
+            .update_time_pattern("10.0.0.0/24", 8, 15.0, 0.01)
+            .unwrap();
+        store
+            .update_time_pattern("10.0.0.0/24", 14, 20.0, 0.01)
+            .unwrap();
         let patterns = store.get_time_patterns("10.0.0.0/24").unwrap();
         assert_eq!(patterns.len(), 3);
         assert_eq!(patterns[0].hour, 8);
@@ -2684,9 +2809,13 @@ mod tests {
     fn update_network_stability_computes() {
         let store = ScanStore::open_in_memory().unwrap();
         // First create a network profile
-        store.update_network_profile("10.0.0.0/24", 25.0, 0.01).unwrap();
+        store
+            .update_network_profile("10.0.0.0/24", 25.0, 0.01)
+            .unwrap();
         // Then update stability with jitter
-        store.update_network_stability("10.0.0.0/24", 5000.0).unwrap();
+        store
+            .update_network_stability("10.0.0.0/24", 5000.0)
+            .unwrap();
         let profile = store.network_profile("10.0.0.0/24").unwrap().unwrap();
         assert!(profile.avg_jitter_us.is_some());
         assert!(profile.stability_score.is_some());
@@ -2697,7 +2826,9 @@ mod tests {
     #[test]
     fn network_profile_includes_new_fields() {
         let store = ScanStore::open_in_memory().unwrap();
-        store.update_network_profile("10.0.0.0/24", 10.0, 0.0).unwrap();
+        store
+            .update_network_profile("10.0.0.0/24", 10.0, 0.0)
+            .unwrap();
         let profile = store.network_profile("10.0.0.0/24").unwrap().unwrap();
         // New fields should be None initially
         assert!(profile.avg_jitter_us.is_none());
@@ -2729,7 +2860,11 @@ mod tests {
             created_at: 1000,
             updated_at: 1000,
             command_args: "rustmap 192.168.1.0/24 -T4".into(),
-            targets: vec!["192.168.1.1".into(), "192.168.1.2".into(), "192.168.1.3".into()],
+            targets: vec![
+                "192.168.1.1".into(),
+                "192.168.1.2".into(),
+                "192.168.1.3".into(),
+            ],
             status: "in_progress".into(),
             completed_hosts: vec![],
             partial_results: vec![],

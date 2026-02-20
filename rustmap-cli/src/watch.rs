@@ -62,10 +62,7 @@ pub async fn run_watch_loop(
             break;
         }
 
-        eprintln!(
-            "\n=== Watch iteration {} ===",
-            iteration
-        );
+        eprintln!("\n=== Watch iteration {} ===", iteration);
 
         let start_time = SystemTime::now();
 
@@ -157,14 +154,9 @@ pub async fn run_watch_loop(
         if let Some(ref prev_id) = previous_scan_id {
             let (diff, svc_changes) = detect_changes(prev_id, &current_scan_id, &result);
 
-            let has_changes = diff
-                .as_ref()
-                .is_some_and(|d| {
-                    !d.new_hosts.is_empty()
-                        || !d.removed_hosts.is_empty()
-                        || !d.port_changes.is_empty()
-                })
-                || !svc_changes.is_empty();
+            let has_changes = diff.as_ref().is_some_and(|d| {
+                !d.new_hosts.is_empty() || !d.removed_hosts.is_empty() || !d.port_changes.is_empty()
+            }) || !svc_changes.is_empty();
 
             if has_changes {
                 let summary = format_change_summary(diff.as_ref(), &svc_changes);
@@ -232,8 +224,8 @@ fn run_scripts(
         Ok(_) => {
             let scripts = discovery.resolve_scripts(&script_config.scripts);
             if !scripts.is_empty() {
-                let runner = ScriptRunner::new(script_config.clone(), scripts)
-                    .with_proxy(proxy.cloned());
+                let runner =
+                    ScriptRunner::new(script_config.clone(), scripts).with_proxy(proxy.cloned());
                 if let Err(e) = runner.run_all(result) {
                     warn!(error = %e, "script execution error in watch mode");
                 }

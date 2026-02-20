@@ -20,16 +20,16 @@ use rustmap_output::{OutputConfig, OutputFormat, OutputManager, OutputSpec, filt
 use rustmap_packet::check_privileges;
 use rustmap_script::{ScriptDiscovery, ScriptRunner};
 use rustmap_types::{
-    DiscoveryConfig, DiscoveryMethod, DiscoveryMode, DnsConfig, PortRange, ScanConfig,
-    ScriptConfig, ScanType, TimingTemplate, top_tcp_ports, DEFAULT_TOP_PORTS, FAST_MODE_TOP_PORTS,
+    DEFAULT_TOP_PORTS, DiscoveryConfig, DiscoveryMethod, DiscoveryMode, DnsConfig,
+    FAST_MODE_TOP_PORTS, PortRange, ScanConfig, ScanType, ScriptConfig, TimingTemplate,
+    top_tcp_ports,
 };
 
 #[tokio::main]
 async fn main() -> Result<()> {
     // Parse args using get_matches() so we can access ArgMatches for profile merging
     let matches = Args::command().get_matches();
-    let mut args = Args::from_arg_matches(&matches)
-        .map_err(|e| anyhow::anyhow!(e))?;
+    let mut args = Args::from_arg_matches(&matches).map_err(|e| anyhow::anyhow!(e))?;
 
     // Handle --list-profiles: show available profiles and exit (before tracing init)
     if args.list_profiles {
@@ -74,7 +74,10 @@ async fn main() -> Result<()> {
         .init();
 
     if args.profile.is_some() {
-        info!(profile = args.profile.as_deref().unwrap(), "applied scan profile");
+        info!(
+            profile = args.profile.as_deref().unwrap(),
+            "applied scan profile"
+        );
     }
 
     // Handle --history: list scan history and exit
@@ -95,7 +98,9 @@ async fn main() -> Result<()> {
     // Handle --api: start REST API server and block
     #[cfg(feature = "api")]
     if args.api {
-        let addr: std::net::SocketAddr = args.listen.parse()
+        let addr: std::net::SocketAddr = args
+            .listen
+            .parse()
             .with_context(|| format!("invalid --listen address: {}", args.listen))?;
         let config = rustmap_api::ApiConfig {
             listen_addr: addr,
@@ -107,7 +112,8 @@ async fn main() -> Result<()> {
         } else {
             eprintln!("  Authentication: disabled (use --api-key to enable)");
         }
-        return rustmap_api::start_server(config).await
+        return rustmap_api::start_server(config)
+            .await
             .map_err(|e| anyhow::anyhow!(e));
     }
 
@@ -133,8 +139,12 @@ async fn main() -> Result<()> {
 
     // Validate DNS server entries eagerly
     for server in &dns_config.servers {
-        server.parse::<std::net::IpAddr>()
-            .with_context(|| format!("invalid --dns-servers value: '{}' is not a valid IP address", server))?;
+        server.parse::<std::net::IpAddr>().with_context(|| {
+            format!(
+                "invalid --dns-servers value: '{}' is not a valid IP address",
+                server
+            )
+        })?;
     }
 
     // Handle --show-profile: display learned network profile and exit
@@ -345,7 +355,9 @@ async fn main() -> Result<()> {
     // Resolve timing-aware defaults for concurrency, timeout, and host_timeout
     let timing_params = rustmap_timing::TimingParams::from_template(timing_template);
 
-    let concurrency = args.concurrency.unwrap_or(timing_params.connect_concurrency);
+    let concurrency = args
+        .concurrency
+        .unwrap_or(timing_params.connect_concurrency);
     let timeout_ms = match args.timeout_ms {
         Some(0) | None => timing_params.connect_timeout.as_millis() as u64,
         Some(ms) => ms,
@@ -470,7 +482,9 @@ async fn main() -> Result<()> {
 
     // MTU discovery requires raw sockets for ICMP
     if config.mtu_discovery && !privilege_level.has_raw_socket_access() {
-        eprintln!("Warning: --mtu-discovery requires elevated privileges for raw ICMP sockets. Disabling.");
+        eprintln!(
+            "Warning: --mtu-discovery requires elevated privileges for raw ICMP sockets. Disabling."
+        );
         config.mtu_discovery = false;
     }
 
@@ -576,9 +590,7 @@ async fn main() -> Result<()> {
 
     let config_for_engine = config.clone();
     tokio::spawn(async move {
-        if let Err(e) =
-            ScanEngine::run_streaming(&config_for_engine, tx, cancel_for_engine).await
-        {
+        if let Err(e) = ScanEngine::run_streaming(&config_for_engine, tx, cancel_for_engine).await {
             warn!(error = %e, "scan engine error");
         }
     });
@@ -599,7 +611,10 @@ async fn main() -> Result<()> {
             rustmap_core::ScanEvent::DiscoveryComplete { hosts_total } => {
                 info!(hosts_total, "discovery complete");
             }
-            rustmap_core::ScanEvent::HostResult { result: host_result, .. } => {
+            rustmap_core::ScanEvent::HostResult {
+                result: host_result,
+                ..
+            } => {
                 let host_ip = host_result.host.ip.to_string();
                 if let Some(ref store) = checkpoint_store
                     && let Err(e) = store.update_checkpoint(&scan_id, &host_ip, &host_result)
@@ -660,8 +675,8 @@ async fn main() -> Result<()> {
                     eprintln!("Warning: no scripts matched the specified pattern(s)");
                 } else {
                     info!(scripts = scripts.len(), "running NSE scripts");
-                    let runner = ScriptRunner::new(script_config, scripts)
-                        .with_proxy(config.proxy.clone());
+                    let runner =
+                        ScriptRunner::new(script_config, scripts).with_proxy(config.proxy.clone());
                     if let Err(e) = runner.run_all(&mut result) {
                         eprintln!("Warning: script execution error: {e}");
                     }
@@ -696,7 +711,10 @@ async fn main() -> Result<()> {
         let vuln_results = run_vuln_check(&result, args.vuln_min_cvss);
         for vuln_host in &vuln_results {
             if let Some(risk) = vuln_host.risk_score
-                && let Some(host) = result.hosts.iter_mut().find(|h| h.host.ip.to_string() == vuln_host.ip)
+                && let Some(host) = result
+                    .hosts
+                    .iter_mut()
+                    .find(|h| h.host.ip.to_string() == vuln_host.ip)
             {
                 host.risk_score = Some(risk);
             }
@@ -1037,8 +1055,7 @@ fn build_discovery_config(args: &Args) -> Result<DiscoveryConfig> {
     if let Some(ref ports_str) = args.udp_ping
         && !ports_str.is_empty()
     {
-        config.udp_ports =
-            parse_port_list(ports_str).context("invalid --PU port specification")?;
+        config.udp_ports = parse_port_list(ports_str).context("invalid --PU port specification")?;
     }
     if let Some(ref ports_str) = args.http_ping
         && !ports_str.is_empty()
@@ -1171,24 +1188,34 @@ pub(crate) fn save_scan_to_db(
         };
 
         // Aggregate timing telemetry from per-host snapshots
-        let (total_sent, total_responded, total_timed_out, srtt_sum, srtt_count, rto_sum, cwnd_sum, host_count) =
-            result.hosts.iter()
-                .filter_map(|h| h.timing_snapshot.as_ref())
-                .fold(
-                    (0u64, 0u64, 0u64, 0u64, 0u64, 0u64, 0f64, 0u64),
-                    |(s, r, t, ss, sc, rs, cs, hc), ts| {
-                        (
-                            s + ts.probes_sent,
-                            r + ts.probes_responded,
-                            t + ts.probes_timed_out,
-                            ss + ts.srtt_us.unwrap_or(0),
-                            sc + u64::from(ts.srtt_us.is_some()),
-                            rs + ts.rto_us,
-                            cs + ts.cwnd as f64,
-                            hc + 1,
-                        )
-                    },
-                );
+        let (
+            total_sent,
+            total_responded,
+            total_timed_out,
+            srtt_sum,
+            srtt_count,
+            rto_sum,
+            cwnd_sum,
+            host_count,
+        ) = result
+            .hosts
+            .iter()
+            .filter_map(|h| h.timing_snapshot.as_ref())
+            .fold(
+                (0u64, 0u64, 0u64, 0u64, 0u64, 0u64, 0f64, 0u64),
+                |(s, r, t, ss, sc, rs, cs, hc), ts| {
+                    (
+                        s + ts.probes_sent,
+                        r + ts.probes_responded,
+                        t + ts.probes_timed_out,
+                        ss + ts.srtt_us.unwrap_or(0),
+                        sc + u64::from(ts.srtt_us.is_some()),
+                        rs + ts.rto_us,
+                        cs + ts.cwnd as f64,
+                        hc + 1,
+                    )
+                },
+            );
 
         let loss_rate = if total_sent > 0 {
             1.0 - (total_responded as f64 / total_sent as f64)
@@ -1260,7 +1287,10 @@ pub(crate) fn save_scan_to_db(
         for port in &host.ports {
             let proto = format!("{}", port.protocol);
             if let Err(e) = store.update_port_history(
-                &ip, &subnet, port.number, &proto,
+                &ip,
+                &subnet,
+                port.number,
+                &proto,
                 port.state == rustmap_types::PortState::Open,
                 finished_at,
             ) {
@@ -1271,11 +1301,19 @@ pub(crate) fn save_scan_to_db(
             if port.state == rustmap_types::PortState::Open
                 && let Some(ref svc) = port.service
             {
-                let (product, version) = port.service_info.as_ref()
+                let (product, version) = port
+                    .service_info
+                    .as_ref()
                     .map(|i| (i.product.as_deref(), i.version.as_deref()))
                     .unwrap_or((None, None));
                 if let Err(e) = store.update_service_cache(
-                    &ip, port.number, &proto, svc, product, version, finished_at,
+                    &ip,
+                    port.number,
+                    &proto,
+                    svc,
+                    product,
+                    version,
+                    finished_at,
                 ) {
                     warn!(error = %e, ip, port = port.number, "failed to update service cache");
                 }
@@ -1331,15 +1369,15 @@ fn show_diff_against_previous(result: &rustmap_types::ScanResult, current_scan_i
 
 /// Print a scan diff to stderr.
 fn print_scan_diff(diff: &rustmap_db::ScanDiff) {
-    if diff.new_hosts.is_empty()
-        && diff.removed_hosts.is_empty()
-        && diff.port_changes.is_empty()
-    {
+    if diff.new_hosts.is_empty() && diff.removed_hosts.is_empty() && diff.port_changes.is_empty() {
         eprintln!("\nNo changes detected since last scan.");
         return;
     }
 
-    eprintln!("\n--- Scan Diff ({} vs {}) ---", diff.old_scan_id, diff.new_scan_id);
+    eprintln!(
+        "\n--- Scan Diff ({} vs {}) ---",
+        diff.old_scan_id, diff.new_scan_id
+    );
 
     for host in &diff.new_hosts {
         eprintln!("  + New host: {host}");
@@ -1420,14 +1458,17 @@ async fn resume_scan(scan_id: &str) -> Result<()> {
         None => bail!("failed to parse stored command args: {}", cp.command_args),
     };
 
-    let resume_matches = args::Args::command().try_get_matches_from(&shell_args)
+    let resume_matches = args::Args::command()
+        .try_get_matches_from(&shell_args)
         .map_err(|e| anyhow::anyhow!("failed to re-parse command args: {e}"))?;
     let mut resume_args = args::Args::from_arg_matches(&resume_matches)
         .map_err(|e| anyhow::anyhow!("failed to extract args: {e}"))?;
 
     // Build DNS config from the stored args so hostname resolution matches the original scan
     let resume_dns_config = DnsConfig {
-        servers: resume_args.dns_servers.as_deref()
+        servers: resume_args
+            .dns_servers
+            .as_deref()
             .map(|s| s.split(',').map(|ip| ip.trim().to_string()).collect())
             .unwrap_or_default(),
         timeout_ms: resume_args.resolve_timeout,
@@ -1476,7 +1517,11 @@ async fn resume_scan(scan_id: &str) -> Result<()> {
     // Build targets from remaining IPs (already expanded and filtered above)
     let targets: Vec<rustmap_types::Host> = remaining_ips
         .into_iter()
-        .map(|ip| rustmap_types::Host { ip, hostname: None, geo_info: None })
+        .map(|ip| rustmap_types::Host {
+            ip,
+            hostname: None,
+            geo_info: None,
+        })
         .collect();
 
     let privilege_level = check_privileges();
@@ -1570,7 +1615,9 @@ async fn resume_scan(scan_id: &str) -> Result<()> {
     let scan_id_for_signal = scan_id.to_string();
     tokio::spawn(async move {
         tokio::signal::ctrl_c().await.ok();
-        eprintln!("\nScan interrupted. Checkpoint saved — resume with: rustmap --resume {scan_id_for_signal}");
+        eprintln!(
+            "\nScan interrupted. Checkpoint saved — resume with: rustmap --resume {scan_id_for_signal}"
+        );
         cancel_for_signal.cancel();
     });
 
@@ -1595,9 +1642,7 @@ async fn resume_scan(scan_id: &str) -> Result<()> {
                 ..
             } => {
                 let host_ip = result.host.ip.to_string();
-                eprintln!(
-                    "  [{hosts_completed}/{hosts_total}] {host_ip} completed",
-                );
+                eprintln!("  [{hosts_completed}/{hosts_total}] {host_ip} completed",);
                 // Update checkpoint in DB
                 if let Err(e) = store.update_checkpoint(&scan_id_owned, &host_ip, &result) {
                     warn!(error = %e, "failed to update checkpoint");
@@ -1649,7 +1694,8 @@ async fn resume_scan(scan_id: &str) -> Result<()> {
         .as_millis() as u64;
     let total_duration = Duration::from_millis(now_ms.saturating_sub(cp.created_at));
 
-    let num_services = all_hosts.iter()
+    let num_services = all_hosts
+        .iter()
         .flat_map(|h| h.ports.iter())
         .filter(|p| p.service.is_some() || p.service_info.is_some())
         .count();
@@ -1677,7 +1723,13 @@ async fn resume_scan(scan_id: &str) -> Result<()> {
         .unwrap_or_default()
         .as_millis() as u64;
 
-    if let Err(e) = store.save_scan(&scan_id_owned, &result, started_at, finished_at, cp.timing_template) {
+    if let Err(e) = store.save_scan(
+        &scan_id_owned,
+        &result,
+        started_at,
+        finished_at,
+        cp.timing_template,
+    ) {
         warn!(error = %e, "failed to save merged scan result");
     }
 
@@ -1717,8 +1769,8 @@ fn suggest_timing_from_db(ip: &IpAddr) -> Option<TimingTemplate> {
 
 /// Display the learned network profile for the given targets and exit.
 fn show_network_profile(targets: &[rustmap_types::Host]) -> Result<()> {
-    let store = rustmap_db::ScanStore::open_default()
-        .with_context(|| "failed to open scan database")?;
+    let store =
+        rustmap_db::ScanStore::open_default().with_context(|| "failed to open scan database")?;
     let subnet = compute_subnet(targets[0].ip);
     match store.network_profile(&subnet)? {
         Some(profile) => {
@@ -1952,18 +2004,20 @@ fn print_vuln_results(results: &[rustmap_vuln::HostVulnResult]) {
     eprintln!("\n--- Vulnerability Report ---");
     for host in results {
         if let Some(risk) = host.risk_score {
-            let sev = if risk >= 9.0 { "CRITICAL" } else if risk >= 7.0 { "HIGH" } else if risk >= 4.0 { "MEDIUM" } else { "LOW" };
+            let sev = if risk >= 9.0 {
+                "CRITICAL"
+            } else if risk >= 7.0 {
+                "HIGH"
+            } else if risk >= 4.0 {
+                "MEDIUM"
+            } else {
+                "LOW"
+            };
             eprintln!("  Host {}: Risk Score {risk:.1}/10.0 ({sev})", host.ip);
         }
         for port_vuln in &host.port_vulns {
-            let svc = port_vuln
-                .product
-                .as_deref()
-                .unwrap_or("unknown");
-            let ver = port_vuln
-                .version
-                .as_deref()
-                .unwrap_or("?");
+            let svc = port_vuln.product.as_deref().unwrap_or("unknown");
+            let ver = port_vuln.version.as_deref().unwrap_or("?");
 
             for vuln in &port_vuln.vulns {
                 let severity = match vuln.cvss_score {

@@ -172,10 +172,7 @@ mod tests {
         let json = serde_json::to_string(&bool_val).unwrap();
         assert_eq!(json, "true");
 
-        let list_val = ScriptValue::List(vec![
-            ScriptValue::Number(1.0),
-            ScriptValue::Number(2.0),
-        ]);
+        let list_val = ScriptValue::List(vec![ScriptValue::Number(1.0), ScriptValue::Number(2.0)]);
         let json = serde_json::to_string(&list_val).unwrap();
         assert!(json.contains("["));
     }
@@ -198,9 +195,18 @@ mod tests {
 
     #[test]
     fn script_category_from_str_loose() {
-        assert_eq!(ScriptCategory::from_str_loose("default"), Some(ScriptCategory::Default));
-        assert_eq!(ScriptCategory::from_str_loose("DEFAULT"), Some(ScriptCategory::Default));
-        assert_eq!(ScriptCategory::from_str_loose("Safe"), Some(ScriptCategory::Safe));
+        assert_eq!(
+            ScriptCategory::from_str_loose("default"),
+            Some(ScriptCategory::Default)
+        );
+        assert_eq!(
+            ScriptCategory::from_str_loose("DEFAULT"),
+            Some(ScriptCategory::Default)
+        );
+        assert_eq!(
+            ScriptCategory::from_str_loose("Safe"),
+            Some(ScriptCategory::Safe)
+        );
         assert_eq!(ScriptCategory::from_str_loose("unknown"), None);
     }
 

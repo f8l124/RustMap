@@ -9,8 +9,8 @@ use std::time::Duration;
 use rustmap_core::parse_target;
 use rustmap_timing::TimingParams;
 use rustmap_types::{
-    DiscoveryConfig, DiscoveryMode, OsDetectionConfig, PortRange, ScanConfig,
-    ScanType, ServiceDetectionConfig, TimingTemplate, top_tcp_ports,
+    DiscoveryConfig, DiscoveryMode, OsDetectionConfig, PortRange, ScanConfig, ScanType,
+    ServiceDetectionConfig, TimingTemplate, top_tcp_ports,
 };
 use serde::{Deserialize, Serialize};
 

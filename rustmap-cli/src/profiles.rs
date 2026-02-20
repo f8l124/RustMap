@@ -181,7 +181,9 @@ fn builtin_profiles() -> Vec<(&'static str, ScanProfile)> {
         (
             "iot-scan",
             ScanProfile {
-                description: Some("IoT device scan: common IoT ports with version detection".into()),
+                description: Some(
+                    "IoT device scan: common IoT ports with version detection".into(),
+                ),
                 ports: Some("22,23,80,443,554,1883,5683,8080,8443,8883,9100,49152".into()),
                 service_version: Some(true),
                 version_intensity: Some(5),
@@ -265,9 +267,7 @@ pub fn load_profile(name: &str) -> Result<ScanProfile> {
         return Ok(profile);
     }
 
-    bail!(
-        "unknown profile '{name}'. Use --list-profiles to see available profiles."
-    );
+    bail!("unknown profile '{name}'. Use --list-profiles to see available profiles.");
 }
 
 /// Save the current CLI arguments as a named user profile.
@@ -283,8 +283,7 @@ pub fn save_profile(name: &str, profile: &ScanProfile) -> Result<()> {
         .with_context(|| format!("failed to create profiles directory: {}", dir.display()))?;
 
     let path = dir.join(format!("{name}.toml"));
-    let content = toml::to_string_pretty(profile)
-        .context("failed to serialize profile to TOML")?;
+    let content = toml::to_string_pretty(profile).context("failed to serialize profile to TOML")?;
     std::fs::write(&path, content)
         .with_context(|| format!("failed to write profile to {}", path.display()))?;
 
@@ -309,7 +308,11 @@ pub fn list_all_profiles() -> Result<Vec<(String, ScanProfile, bool)>> {
         for entry in entries.flatten() {
             let path = entry.path();
             if path.extension().is_some_and(|ext| ext == "toml") {
-                let name = path.file_stem().unwrap_or_default().to_string_lossy().to_string();
+                let name = path
+                    .file_stem()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string();
                 // Skip if it shadows a built-in
                 if BUILTIN_NAMES.contains(&name.as_str()) {
                     continue;
@@ -333,10 +336,7 @@ pub fn show_profiles() -> Result<()> {
     println!("Available scan profiles:\n");
     for (name, profile, is_builtin) in &profiles {
         let tag = if *is_builtin { "[built-in]" } else { "[user]" };
-        let desc = profile
-            .description
-            .as_deref()
-            .unwrap_or("(no description)");
+        let desc = profile.description.as_deref().unwrap_or("(no description)");
         println!("  {name:<20} {tag:<12} {desc}");
     }
 
@@ -352,11 +352,7 @@ pub fn show_profiles() -> Result<()> {
 ///
 /// Only applies fields where the profile has a `Some` value AND the user
 /// did not explicitly provide that flag on the command line.
-pub fn apply_profile_with_matches(
-    profile: &ScanProfile,
-    args: &mut Args,
-    matches: &ArgMatches,
-) {
+pub fn apply_profile_with_matches(profile: &ScanProfile, args: &mut Args, matches: &ArgMatches) {
     // Helper: returns true if the user did NOT explicitly set this flag.
     let not_set = |id: &str| -> bool {
         matches
@@ -657,8 +653,7 @@ mod tests {
         let content = toml::to_string_pretty(&profile).unwrap();
         std::fs::write(&path, &content).unwrap();
 
-        let loaded: ScanProfile =
-            toml::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        let loaded: ScanProfile = toml::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
         assert_eq!(loaded.ports.as_deref(), Some("22,80,443"));
         assert_eq!(loaded.timing, Some(3));
         assert_eq!(loaded.service_version, Some(true));

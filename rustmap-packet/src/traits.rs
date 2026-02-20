@@ -95,9 +95,8 @@ pub trait PacketSender: Send + Sync {
         dst_port: u16,
         flags: TcpFlags,
     ) -> Result<(), PacketError> {
-        let packet = crate::build::build_tcp_packet(
-            src_ip, src_port, dst_ip, dst_port, rand_seq(), flags,
-        )?;
+        let packet =
+            crate::build::build_tcp_packet(src_ip, src_port, dst_ip, dst_port, rand_seq(), flags)?;
         self.send_raw(src_ip, dst_ip, &packet).await
     }
 

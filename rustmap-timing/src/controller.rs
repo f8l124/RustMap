@@ -183,22 +183,38 @@ impl TimingController {
 
     /// Current RTO for new probes.
     pub fn current_rto(&self) -> Duration {
-        self.inner.lock().unwrap_or_else(|e| e.into_inner()).rtt.rto()
+        self.inner
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .rtt
+            .rto()
     }
 
     /// Current smoothed RTT.
     pub fn current_srtt(&self) -> Option<Duration> {
-        self.inner.lock().unwrap_or_else(|e| e.into_inner()).rtt.srtt()
+        self.inner
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .rtt
+            .srtt()
     }
 
     /// Maximum retries allowed by current timing config.
     pub fn max_retries(&self) -> u8 {
-        self.inner.lock().unwrap_or_else(|e| e.into_inner()).params.max_retries
+        self.inner
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .params
+            .max_retries
     }
 
     /// Scan delay between probes.
     pub fn scan_delay(&self) -> Duration {
-        self.inner.lock().unwrap_or_else(|e| e.into_inner()).params.scan_delay
+        self.inner
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .params
+            .scan_delay
     }
 
     /// Scan delay with optional jitter.
@@ -337,7 +353,10 @@ mod tests {
         std::thread::sleep(Duration::from_millis(10));
 
         // min_rate override should allow sending despite cwnd block
-        assert!(tc.can_send(), "min_rate should override cwnd block when current rate < min_rate");
+        assert!(
+            tc.can_send(),
+            "min_rate should override cwnd block when current rate < min_rate"
+        );
     }
 
     #[test]
@@ -441,8 +460,14 @@ mod tests {
         let mut saw_max_range = false;
         for _ in 0..200 {
             let delay = tc.scan_delay_jittered();
-            assert!(delay >= Duration::from_millis(100), "delay {delay:?} < 100ms");
-            assert!(delay <= Duration::from_millis(500), "delay {delay:?} > 500ms");
+            assert!(
+                delay >= Duration::from_millis(100),
+                "delay {delay:?} < 100ms"
+            );
+            assert!(
+                delay <= Duration::from_millis(500),
+                "delay {delay:?} > 500ms"
+            );
             if delay < Duration::from_millis(200) {
                 saw_min_range = true;
             }

@@ -63,9 +63,7 @@ impl ScanEngine {
         let cancel = CancellationToken::new();
         let config = config.clone();
 
-        let handle = tokio::spawn(async move {
-            Self::run_streaming(&config, tx, cancel).await
-        });
+        let handle = tokio::spawn(async move { Self::run_streaming(&config, tx, cancel).await });
 
         let mut final_result = None;
         while let Some(event) = rx.recv().await {
@@ -239,21 +237,24 @@ impl ScanEngine {
                     Ok(permit) => permit,
                     Err(e) => {
                         warn!("semaphore acquire failed for {}: {}", target.ip, e);
-                        return (index, HostScanResult {
-                            host: target,
-                            ports: vec![],
-                            scan_duration: Duration::ZERO,
-                            host_status: status,
-                            discovery_latency: latency,
-                            os_fingerprint: None,
-                            traceroute: None,
-                            timing_snapshot: None,
-                            host_script_results: vec![],
-                            scan_error: Some(format!("semaphore acquire failed: {e}")),
-                            uptime_estimate: None,
-                            risk_score: None,
-                            mtu: None,
-                        });
+                        return (
+                            index,
+                            HostScanResult {
+                                host: target,
+                                ports: vec![],
+                                scan_duration: Duration::ZERO,
+                                host_status: status,
+                                discovery_latency: latency,
+                                os_fingerprint: None,
+                                traceroute: None,
+                                timing_snapshot: None,
+                                host_script_results: vec![],
+                                scan_error: Some(format!("semaphore acquire failed: {e}")),
+                                uptime_estimate: None,
+                                risk_score: None,
+                                mtu: None,
+                            },
+                        );
                     }
                 };
 
@@ -273,8 +274,7 @@ impl ScanEngine {
         }
 
         // Collect results with cancellation support
-        let mut indexed_results: Vec<(usize, HostScanResult)> =
-            Vec::with_capacity(num_targets);
+        let mut indexed_results: Vec<(usize, HostScanResult)> = Vec::with_capacity(num_targets);
         let mut hosts_completed: usize = 0;
 
         loop {
@@ -325,8 +325,10 @@ impl ScanEngine {
 
         // Sort by original target index to maintain order
         indexed_results.sort_by_key(|(idx, _)| *idx);
-        let host_results: Vec<HostScanResult> =
-            indexed_results.into_iter().map(|(_, result)| result).collect();
+        let host_results: Vec<HostScanResult> = indexed_results
+            .into_iter()
+            .map(|(_, result)| result)
+            .collect();
 
         let scan_result = ScanResult {
             hosts: host_results,

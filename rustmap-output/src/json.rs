@@ -8,9 +8,8 @@ pub struct JsonFormatter;
 
 impl OutputFormatter for JsonFormatter {
     fn format(&self, result: &ScanResult) -> Result<String, OutputError> {
-        serde_json::to_string_pretty(result).map_err(|e| {
-            OutputError::FormatError(format!("JSON serialization error: {e}"))
-        })
+        serde_json::to_string_pretty(result)
+            .map_err(|e| OutputError::FormatError(format!("JSON serialization error: {e}")))
     }
 }
 
@@ -18,8 +17,8 @@ impl OutputFormatter for JsonFormatter {
 mod tests {
     use super::*;
     use rustmap_types::{
-        DetectionMethod, Host, HostScanResult, HostStatus, OsFingerprint, OsProbeResults,
-        Port, PortState, Protocol, ScanType, ServiceInfo,
+        DetectionMethod, Host, HostScanResult, HostStatus, OsFingerprint, OsProbeResults, Port,
+        PortState, Protocol, ScanType, ServiceInfo,
     };
     use std::net::{IpAddr, Ipv4Addr};
     use std::time::Duration;

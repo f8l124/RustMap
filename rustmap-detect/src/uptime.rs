@@ -94,10 +94,7 @@ mod tests {
         TcpFingerprint {
             initial_ttl: 64,
             window_size: 29200,
-            tcp_options: vec![
-                TcpOption::Mss(1460),
-                TcpOption::Timestamp(ts_val, 0),
-            ],
+            tcp_options: vec![TcpOption::Mss(1460), TcpOption::Timestamp(ts_val, 0)],
             df_bit: true,
             mss: Some(1460),
         }
@@ -288,6 +285,9 @@ mod tests {
         };
         // (u32::MAX-1) / 100.0 = ~42,949,672.94s = ~1.36 years -- should succeed
         let uptime = estimate_uptime(&fp);
-        assert!(uptime.is_some(), "1.36 years should be under the 5-year limit");
+        assert!(
+            uptime.is_some(),
+            "1.36 years should be under the 5-year limit"
+        );
     }
 }

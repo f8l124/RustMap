@@ -194,11 +194,7 @@ fn built_in_signatures() -> Vec<TlsSignature> {
                 0x1303, // CHACHA20 often preferred on OpenBSD
                 0x1301, 0x1302, 0xC02F, 0xC030,
             ],
-            expected_extensions: &[
-                RENEGOTIATION_INFO,
-                EC_POINT_FORMATS,
-                EXTENDED_MASTER_SECRET,
-            ],
+            expected_extensions: &[RENEGOTIATION_INFO, EC_POINT_FORMATS, EXTENDED_MASTER_SECRET],
             supports_tls13: true,
         },
         // OpenSSL — FreeBSD
@@ -251,7 +247,7 @@ mod tests {
     fn match_openssl_fingerprint() {
         let db = TlsSignatureDb::new();
         let fp = TlsServerFingerprint {
-            tls_version: 0x0304, // TLS 1.3
+            tls_version: 0x0304,  // TLS 1.3
             cipher_suite: 0x1301, // AES_128_GCM_SHA256
             extensions: vec![0xFF01, 0x000B, 0x0023, 0x0017, 0x0016],
             compression_method: 0,
@@ -290,7 +286,7 @@ mod tests {
         let sig = &built_in_signatures()[0]; // Schannel Windows 10/11
         let fp = TlsServerFingerprint {
             tls_version: 0x0304,
-            cipher_suite: 0xC030, // Matches Schannel
+            cipher_suite: 0xC030,             // Matches Schannel
             extensions: vec![0xFF01, 0x0017], // Exact match
             compression_method: 0,
             alpn: None,
@@ -321,7 +317,10 @@ mod tests {
         };
 
         let score = score_tls_match(&fp, sig);
-        assert!(score < 70, "no cipher match should reduce score, got {score}");
+        assert!(
+            score < 70,
+            "no cipher match should reduce score, got {score}"
+        );
     }
 
     #[test]
@@ -339,7 +338,10 @@ mod tests {
         };
 
         let score = score_tls_match(&fp, sig);
-        assert!(score < 30, "empty fingerprint should score low, got {score}");
+        assert!(
+            score < 30,
+            "empty fingerprint should score low, got {score}"
+        );
     }
 
     #[test]

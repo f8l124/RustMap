@@ -32,9 +32,7 @@ pub fn fragment_ipv4_packet(packet: &[u8]) -> Result<Vec<Vec<u8>>, PacketError> 
     // IP header length (IHL field, in 32-bit words)
     let ihl = (packet[0] & 0x0F) as usize * 4;
     if ihl < 20 || ihl > packet.len() {
-        return Err(PacketError::BuildFailed(
-            "invalid IP header length".into(),
-        ));
+        return Err(PacketError::BuildFailed("invalid IP header length".into()));
     }
 
     let payload = &packet[ihl..];
@@ -171,11 +169,17 @@ mod tests {
 
         // First fragment: MF bit should be set (bit 13 = 0x2000)
         let flags1 = ((fragments[0][6] as u16) << 8) | (fragments[0][7] as u16);
-        assert!(flags1 & 0x2000 != 0, "MF flag should be set on first fragment");
+        assert!(
+            flags1 & 0x2000 != 0,
+            "MF flag should be set on first fragment"
+        );
 
         // Last fragment: MF bit should be clear
         let flags2 = ((fragments[1][6] as u16) << 8) | (fragments[1][7] as u16);
-        assert!(flags2 & 0x2000 == 0, "MF flag should not be set on last fragment");
+        assert!(
+            flags2 & 0x2000 == 0,
+            "MF flag should not be set on last fragment"
+        );
     }
 
     #[test]
@@ -239,7 +243,10 @@ mod tests {
         for frag in &fragments {
             // Verify checksum: sum of all 16-bit words in IP header should be 0xFFFF
             let cksum = ip_checksum(&frag[..20]);
-            assert_eq!(cksum, 0, "IP checksum should validate to 0 (one's complement)");
+            assert_eq!(
+                cksum, 0,
+                "IP checksum should validate to 0 (one's complement)"
+            );
         }
     }
 

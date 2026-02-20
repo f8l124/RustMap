@@ -5,9 +5,9 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::UdpSocket;
 use tracing::debug;
 
+use crate::DetectionError;
 use crate::proxy::connect_tcp;
 use crate::tls_fingerprint::probe_tls_server;
-use crate::DetectionError;
 use rustmap_types::{DetectionMethod, ProxyConfig, ServiceInfo, TlsServerFingerprint};
 
 /// Probe a port with a TLS handshake and derive service information from the result.
@@ -168,11 +168,7 @@ pub struct QuicProbeResult {
 /// Send a QUIC Initial packet to detect HTTP/3 / QUIC support.
 ///
 /// Returns `true` if the server responds with any UDP data (indicating QUIC support).
-pub async fn probe_quic(
-    ip: IpAddr,
-    port: u16,
-    timeout: Duration,
-) -> Result<bool, DetectionError> {
+pub async fn probe_quic(ip: IpAddr, port: u16, timeout: Duration) -> Result<bool, DetectionError> {
     let result = probe_quic_detailed(ip, port, timeout).await?;
     Ok(result.supported)
 }
@@ -186,11 +182,7 @@ pub async fn probe_quic_detailed(
     port: u16,
     timeout: Duration,
 ) -> Result<QuicProbeResult, DetectionError> {
-    let bind_addr = if ip.is_ipv6() {
-        "[::]:0"
-    } else {
-        "0.0.0.0:0"
-    };
+    let bind_addr = if ip.is_ipv6() { "[::]:0" } else { "0.0.0.0:0" };
 
     let socket = UdpSocket::bind(bind_addr).await?;
     let target = std::net::SocketAddr::new(ip, port);
@@ -316,7 +308,12 @@ pub fn parse_version_negotiation(data: &[u8]) -> Vec<u32> {
 
     // Remaining bytes are 4-byte version entries
     while offset + 4 <= data.len() {
-        let ver = u32::from_be_bytes([data[offset], data[offset + 1], data[offset + 2], data[offset + 3]]);
+        let ver = u32::from_be_bytes([
+            data[offset],
+            data[offset + 1],
+            data[offset + 2],
+            data[offset + 3],
+        ]);
         versions.push(ver);
         offset += 4;
     }
@@ -416,7 +413,11 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_millis(1));
         let pkt2 = build_quic_initial();
         // DCID is bytes 6..14
-        assert_ne!(&pkt1[6..14], &pkt2[6..14], "DCIDs should differ between calls");
+        assert_ne!(
+            &pkt1[6..14],
+            &pkt2[6..14],
+            "DCIDs should differ between calls"
+        );
     }
 
     #[test]

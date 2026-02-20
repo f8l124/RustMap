@@ -16,8 +16,7 @@ pub mod uptime;
 
 pub use detector::ServiceDetector;
 pub use modern_probes::{
-    QuicProbeResult, probe_http2_cleartext, probe_quic, probe_quic_detailed,
-    probe_tls_for_service,
+    QuicProbeResult, probe_http2_cleartext, probe_quic, probe_quic_detailed, probe_tls_for_service,
 };
 pub use os_detect::{OsDetector, infer_os_from_services};
 pub use port_map::PortServiceMap;

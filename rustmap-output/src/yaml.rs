@@ -5,9 +5,8 @@ pub struct YamlFormatter;
 
 impl OutputFormatter for YamlFormatter {
     fn format(&self, result: &ScanResult) -> Result<String, OutputError> {
-        serde_yaml::to_string(result).map_err(|e| {
-            OutputError::FormatError(format!("YAML serialization error: {e}"))
-        })
+        serde_yaml::to_string(result)
+            .map_err(|e| OutputError::FormatError(format!("YAML serialization error: {e}")))
     }
 }
 

@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use futures::stream::{FuturesUnordered, StreamExt};
 use rustmap_types::{
-    Host, HostScanResult, Port, PortState, ProxyConfig, Protocol, ScanConfig, TimingSnapshot,
+    Host, HostScanResult, Port, PortState, Protocol, ProxyConfig, ScanConfig, TimingSnapshot,
 };
 use std::net::SocketAddr;
 use std::time::{Duration, Instant};
@@ -161,7 +161,13 @@ impl Scanner for TcpConnectScanner {
             ports.push(port_result);
 
             if let Some(next_port) = ports_iter.next() {
-                futures.push(Self::scan_port(ip, next_port, timeout, proxy, custom_payload));
+                futures.push(Self::scan_port(
+                    ip,
+                    next_port,
+                    timeout,
+                    proxy,
+                    custom_payload,
+                ));
             }
         }
 
@@ -177,7 +183,10 @@ impl Scanner for TcpConnectScanner {
         );
 
         let probes_sent = config.ports.len() as u64;
-        let responded = ports.iter().filter(|p| p.state != PortState::Filtered).count() as u64;
+        let responded = ports
+            .iter()
+            .filter(|p| p.state != PortState::Filtered)
+            .count() as u64;
         let timing_snapshot = TimingSnapshot {
             srtt_us: None,
             rto_us: config.timeout.as_micros() as u64,
@@ -326,10 +335,7 @@ mod tests {
         let lcg = LcgPermutation::new(1000);
         let indices: Vec<usize> = lcg.collect();
         // Count how many consecutive pairs are sequential
-        let sequential_count = indices
-            .windows(2)
-            .filter(|w| w[1] == w[0] + 1)
-            .count();
+        let sequential_count = indices.windows(2).filter(|w| w[1] == w[0] + 1).count();
         // A truly random permutation of 1000 elements has ~1 sequential pair on average.
         // Allow up to 100 to be safe but fail if it's nearly all sequential.
         assert!(

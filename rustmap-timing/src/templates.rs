@@ -36,7 +36,7 @@ impl TimingParams {
                 max_cwnd: 2.0,
                 ssthresh: 2.0,
                 max_retries: 10,
-                host_timeout: Duration::ZERO, // no host timeout
+                host_timeout: Duration::ZERO,         // no host timeout
                 scan_delay: Duration::from_secs(300), // 5 minutes
                 max_scan_delay: Duration::from_secs(300),
                 min_rate: None,
@@ -173,11 +173,23 @@ mod tests {
 
         for template in templates {
             let params = TimingParams::from_template(template);
-            assert!(params.min_rto <= params.initial_rto, "{template:?}: min_rto > initial_rto");
-            assert!(params.initial_rto <= params.max_rto, "{template:?}: initial_rto > max_rto");
+            assert!(
+                params.min_rto <= params.initial_rto,
+                "{template:?}: min_rto > initial_rto"
+            );
+            assert!(
+                params.initial_rto <= params.max_rto,
+                "{template:?}: initial_rto > max_rto"
+            );
             assert!(params.initial_cwnd >= 1.0, "{template:?}: initial_cwnd < 1");
-            assert!(params.initial_cwnd <= params.max_cwnd, "{template:?}: initial_cwnd > max_cwnd");
-            assert!(params.connect_concurrency >= 1, "{template:?}: connect_concurrency < 1");
+            assert!(
+                params.initial_cwnd <= params.max_cwnd,
+                "{template:?}: initial_cwnd > max_cwnd"
+            );
+            assert!(
+                params.connect_concurrency >= 1,
+                "{template:?}: connect_concurrency < 1"
+            );
             assert!(
                 params.connect_timeout > Duration::ZERO,
                 "{template:?}: connect_timeout is zero"

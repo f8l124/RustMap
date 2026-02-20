@@ -3,9 +3,9 @@ use std::sync::Arc;
 use pyo3::exceptions::PyStopAsyncIteration;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
-use tokio::sync::mpsc;
-use tokio::sync::Mutex;
 use rustmap_core::{CancellationToken, ScanEvent};
+use tokio::sync::Mutex;
+use tokio::sync::mpsc;
 
 use crate::error::RustmapError;
 use crate::result::{PyHostScanResult, PyScanResult};
@@ -97,9 +97,7 @@ impl PyScanStream {
                     hosts_completed,
                     hosts_total,
                 }),
-                Some(ScanEvent::Complete(result)) => {
-                    Ok(StreamEvent::Complete { result })
-                }
+                Some(ScanEvent::Complete(result)) => Ok(StreamEvent::Complete { result }),
                 Some(ScanEvent::DiscoveryComplete { hosts_total }) => {
                     Ok(StreamEvent::DiscoveryComplete { hosts_total })
                 }

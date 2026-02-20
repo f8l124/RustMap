@@ -108,8 +108,7 @@ impl GeoIpReader {
                     match lookup_result.decode::<maxminddb::geoip2::City>() {
                         Ok(Some(city)) => {
                             // Country info
-                            info.country_code =
-                                city.country.iso_code.map(|s| s.to_string());
+                            info.country_code = city.country.iso_code.map(|s| s.to_string());
                             if let Some(name) = city.country.names.english {
                                 info.country = Some(name.to_string());
                                 has_data = true;
@@ -127,8 +126,7 @@ impl GeoIpReader {
                             // Location info
                             info.latitude = city.location.latitude;
                             info.longitude = city.location.longitude;
-                            info.timezone =
-                                city.location.time_zone.map(|s| s.to_string());
+                            info.timezone = city.location.time_zone.map(|s| s.to_string());
                             if info.latitude.is_some() {
                                 has_data = true;
                             }
@@ -152,9 +150,7 @@ impl GeoIpReader {
                     match lookup_result.decode::<maxminddb::geoip2::Asn>() {
                         Ok(Some(asn)) => {
                             info.asn = asn.autonomous_system_number;
-                            info.as_org = asn
-                                .autonomous_system_organization
-                                .map(|s| s.to_string());
+                            info.as_org = asn.autonomous_system_organization.map(|s| s.to_string());
                             if info.asn.is_some() || info.as_org.is_some() {
                                 has_data = true;
                             }

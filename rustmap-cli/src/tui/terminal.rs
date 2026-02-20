@@ -3,8 +3,8 @@
 use std::io;
 
 use crossterm::terminal::{self, EnterAlternateScreen};
-use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
+use ratatui::backend::CrosstermBackend;
 
 /// RAII guard that restores terminal state on drop (including panics).
 pub struct TerminalGuard;

@@ -6,8 +6,8 @@ use tokio::sync::Notify;
 use tracing::{debug, info, warn};
 
 use rustmap_packet::{
-    CaptureConfig, CapturedResponse, PacketReceiver, PacketSender, ResponseType,
-    create_capture, create_sender,
+    CaptureConfig, CapturedResponse, PacketReceiver, PacketSender, ResponseType, create_capture,
+    create_sender,
 };
 use rustmap_timing::{TimingController, TimingParams};
 use rustmap_types::{
@@ -56,11 +56,13 @@ impl HostDiscovery {
         }
 
         // Partition methods into raw-packet vs HTTP-based
-        let raw_methods: Vec<DiscoveryMethod> = methods.iter()
+        let raw_methods: Vec<DiscoveryMethod> = methods
+            .iter()
             .filter(|m| !matches!(m, DiscoveryMethod::HttpPing | DiscoveryMethod::HttpsPing))
             .copied()
             .collect();
-        let http_methods: Vec<DiscoveryMethod> = methods.iter()
+        let http_methods: Vec<DiscoveryMethod> = methods
+            .iter()
             .filter(|m| matches!(m, DiscoveryMethod::HttpPing | DiscoveryMethod::HttpsPing))
             .copied()
             .collect();
@@ -225,13 +227,7 @@ async fn discover_privileged(
         let done_notify = done_notify.clone();
 
         tokio::spawn(async move {
-            discovery_response_processor(
-                &mut capture,
-                &timing,
-                &tracker,
-                &done_notify,
-            )
-            .await;
+            discovery_response_processor(&mut capture, &timing, &tracker, &done_notify).await;
             debug!("discovery response processor finished");
         })
     };
@@ -252,7 +248,10 @@ async fn discover_privileged(
     let _ = tokio::time::timeout(Duration::from_millis(500), recv_handle).await;
 
     let results = tracker.collect_results();
-    let up = results.iter().filter(|r| r.status == HostStatus::Up).count();
+    let up = results
+        .iter()
+        .filter(|r| r.status == HostStatus::Up)
+        .count();
 
     info!(
         total = total,
@@ -293,8 +292,16 @@ async fn discovery_send_loop(
 
             match method {
                 DiscoveryMethod::IcmpEcho => {
-                    send_icmp_echo(sender, src_ip, target_ip, icmp_id ^ icmp_id_override, seq, timing, tracker)
-                        .await;
+                    send_icmp_echo(
+                        sender,
+                        src_ip,
+                        target_ip,
+                        icmp_id ^ icmp_id_override,
+                        seq,
+                        timing,
+                        tracker,
+                    )
+                    .await;
                 }
                 DiscoveryMethod::TcpSyn => {
                     for &port in tcp_syn_ports {
@@ -313,15 +320,21 @@ async fn discovery_send_loop(
                     }
                 }
                 DiscoveryMethod::IcmpTimestamp => {
-                    send_icmp_timestamp(sender, src_ip, target_ip, icmp_id ^ icmp_id_override, seq, timing, tracker)
-                        .await;
+                    send_icmp_timestamp(
+                        sender,
+                        src_ip,
+                        target_ip,
+                        icmp_id ^ icmp_id_override,
+                        seq,
+                        timing,
+                        tracker,
+                    )
+                    .await;
                 }
                 DiscoveryMethod::UdpPing => {
                     for &port in udp_ports {
-                        send_udp_ping(
-                            sender, src_ip, target_ip, port, timing, tracker, port_alloc,
-                        )
-                        .await;
+                        send_udp_ping(sender, src_ip, target_ip, port, timing, tracker, port_alloc)
+                            .await;
                     }
                 }
                 DiscoveryMethod::ArpPing => {
@@ -377,7 +390,10 @@ async fn send_tcp_syn_ping(
     let src_port = port_alloc.next_port();
     tracker.on_probe_sent(dst_ip);
 
-    match sender.send_tcp_syn(src_ip, src_port, dst_ip, dst_port).await {
+    match sender
+        .send_tcp_syn(src_ip, src_port, dst_ip, dst_port)
+        .await
+    {
         Ok(()) => timing.on_probe_sent(),
         Err(e) => {
             warn!(target_ip = %dst_ip, port = dst_port, error = %e, "failed to send TCP SYN ping");
@@ -430,9 +446,7 @@ async fn send_icmp_timestamp(
     timing.wait_for_slot().await;
     tracker.on_probe_sent(dst_ip);
 
-    let pkt = match rustmap_packet::build::build_icmp_timestamp_packet(
-        src_ip, dst_ip, id, seq,
-    ) {
+    let pkt = match rustmap_packet::build::build_icmp_timestamp_packet(src_ip, dst_ip, id, seq) {
         Ok(p) => p,
         Err(e) => {
             warn!(target_ip = %dst_ip, error = %e, "failed to build ICMP timestamp packet");
@@ -712,9 +726,12 @@ async fn discover_http(
                                 } else {
                                     format!("{ip}")
                                 };
-                                let _ = stream.write_all(
-                                    format!("HEAD / HTTP/1.0\r\nHost: {host}\r\n\r\n").as_bytes(),
-                                ).await;
+                                let _ = stream
+                                    .write_all(
+                                        format!("HEAD / HTTP/1.0\r\nHost: {host}\r\n\r\n")
+                                            .as_bytes(),
+                                    )
+                                    .await;
                             }
                             tracker.on_response(ip);
                         }
@@ -773,10 +790,7 @@ fn get_src_ip(target_ip: IpAddr) -> IpAddr {
 /// (type 3, code 4) with the next-hop MTU. Binary search converges on the path MTU.
 ///
 /// IPv4 only. Returns `None` if the host doesn't respond to ICMP or the target is IPv6.
-pub async fn discover_mtu(
-    host: &Host,
-    timeout: Duration,
-) -> Option<u16> {
+pub async fn discover_mtu(host: &Host, timeout: Duration) -> Option<u16> {
     let dst_ip = match host.ip {
         IpAddr::V4(v4) => v4,
         IpAddr::V6(_) => {
@@ -830,7 +844,8 @@ pub async fn discover_mtu(
     let probe_timeout = timeout.min(Duration::from_millis(500));
 
     // First check: can we reach the host at all with a small ICMP echo?
-    let small_pkt = match rustmap_packet::build::build_icmp_echo_df_packet(src_ip, dst_ip, id, 0, 0) {
+    let small_pkt = match rustmap_packet::build::build_icmp_echo_df_packet(src_ip, dst_ip, id, 0, 0)
+    {
         Ok(p) => p,
         Err(_) => return None,
     };
@@ -862,7 +877,11 @@ pub async fn discover_mtu(
         let payload_size = (mid as usize).saturating_sub(28);
 
         let pkt = match rustmap_packet::build::build_icmp_echo_df_packet(
-            src_ip, dst_ip, id, seq, payload_size,
+            src_ip,
+            dst_ip,
+            id,
+            seq,
+            payload_size,
         ) {
             Ok(p) => p,
             Err(_) => {

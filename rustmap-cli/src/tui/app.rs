@@ -343,10 +343,7 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(
-        config: ScanConfig,
-        db: Option<rustmap_db::ScanStore>,
-    ) -> Self {
+    pub fn new(config: ScanConfig, db: Option<rustmap_db::ScanStore>) -> Self {
         let config_state = screens::config::initial_state(&config);
         Self {
             screen: Screen::Config,
@@ -383,8 +380,7 @@ impl App {
         self.scan_rx = Some(rx);
 
         tokio::spawn(async move {
-            if let Err(e) =
-                rustmap_core::ScanEngine::run_streaming(&config, tx, cancel_clone).await
+            if let Err(e) = rustmap_core::ScanEngine::run_streaming(&config, tx, cancel_clone).await
             {
                 eprintln!("Engine error: {e}");
             }
@@ -469,13 +465,9 @@ impl App {
             Screen::Config => {
                 screens::config::handle_key(key, &mut self.config_state, self.scan_running)
             }
-            Screen::Scan => {
-                screens::scan::handle_key(key, &mut self.scan_state, self.scan_running)
-            }
+            Screen::Scan => screens::scan::handle_key(key, &mut self.scan_state, self.scan_running),
             Screen::Results => screens::results::handle_key(key, &mut self.results_state),
-            Screen::History => {
-                screens::history::handle_key(key, &mut self.history_state, &self.db)
-            }
+            Screen::History => screens::history::handle_key(key, &mut self.history_state, &self.db),
             Screen::Help => screens::help::handle_key(key, &mut self.help_state),
         };
 
@@ -568,28 +560,20 @@ impl App {
 
         // Pass specific fields to avoid borrow-checker conflicts with &mut state + &self
         match self.screen {
-            Screen::Config => {
-                screens::config::render(frame, chunks[1], &mut self.config_state)
-            }
-            Screen::Scan => {
-                screens::scan::render(frame, chunks[1], &mut self.scan_state)
-            }
-            Screen::Results => {
-                screens::results::render(
-                    frame,
-                    chunks[1],
-                    &mut self.results_state,
-                    &self.scan_result,
-                )
-            }
-            Screen::History => {
-                screens::history::render(
-                    frame,
-                    chunks[1],
-                    &mut self.history_state,
-                    self.db.is_some(),
-                )
-            }
+            Screen::Config => screens::config::render(frame, chunks[1], &mut self.config_state),
+            Screen::Scan => screens::scan::render(frame, chunks[1], &mut self.scan_state),
+            Screen::Results => screens::results::render(
+                frame,
+                chunks[1],
+                &mut self.results_state,
+                &self.scan_result,
+            ),
+            Screen::History => screens::history::render(
+                frame,
+                chunks[1],
+                &mut self.history_state,
+                self.db.is_some(),
+            ),
             Screen::Help => screens::help::render(frame, chunks[1], &mut self.help_state),
         }
 

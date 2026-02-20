@@ -72,39 +72,32 @@ impl ScriptDiscovery {
         })?;
 
         for entry in entries {
-            let entry = entry.map_err(|e| {
-                ScriptError::Discovery(format!("failed to read entry: {e}"))
-            })?;
+            let entry =
+                entry.map_err(|e| ScriptError::Discovery(format!("failed to read entry: {e}")))?;
             if entry.file_type().is_ok_and(|ft| ft.is_symlink()) {
                 continue;
             }
             let path = entry.path();
             match path.extension().and_then(|e| e.to_str()) {
-                Some("lua") => {
-                    match self.parse_script_meta(&path) {
-                        Ok(meta) => self.scripts.push(meta),
-                        Err(e) => {
-                            eprintln!("warning: skipping {}: {e}", path.display());
-                        }
+                Some("lua") => match self.parse_script_meta(&path) {
+                    Ok(meta) => self.scripts.push(meta),
+                    Err(e) => {
+                        eprintln!("warning: skipping {}: {e}", path.display());
                     }
-                }
-                Some("py") => {
-                    match self.parse_python_meta(&path) {
-                        Ok(meta) => self.scripts.push(meta),
-                        Err(e) => {
-                            eprintln!("warning: skipping {}: {e}", path.display());
-                        }
+                },
+                Some("py") => match self.parse_python_meta(&path) {
+                    Ok(meta) => self.scripts.push(meta),
+                    Err(e) => {
+                        eprintln!("warning: skipping {}: {e}", path.display());
                     }
-                }
+                },
                 #[cfg(feature = "wasm")]
-                Some("wasm") => {
-                    match self.parse_wasm_meta(&path) {
-                        Ok(meta) => self.scripts.push(meta),
-                        Err(e) => {
-                            eprintln!("warning: skipping {}: {e}", path.display());
-                        }
+                Some("wasm") => match self.parse_wasm_meta(&path) {
+                    Ok(meta) => self.scripts.push(meta),
+                    Err(e) => {
+                        eprintln!("warning: skipping {}: {e}", path.display());
                     }
-                }
+                },
                 _ => {}
             }
         }
@@ -129,8 +122,7 @@ impl ScriptDiscovery {
             })?
             .to_string();
 
-        let description = parse_field(&content, "summary")
-            .unwrap_or_default();
+        let description = parse_field(&content, "summary").unwrap_or_default();
         let categories = parse_list_field(&content, "categories")
             .iter()
             .filter_map(|s| ScriptCategory::from_str_loose(s))
@@ -173,8 +165,7 @@ impl ScriptDiscovery {
         // Extract metadata from Python comment lines (# key = value)
         let stripped = python_comment_content(&content);
 
-        let description = parse_field(&stripped, "summary")
-            .unwrap_or_default();
+        let description = parse_field(&stripped, "summary").unwrap_or_default();
         let categories = parse_python_list_field(&stripped, "categories")
             .iter()
             .filter_map(|s| ScriptCategory::from_str_loose(s))
@@ -205,33 +196,34 @@ impl ScriptDiscovery {
     #[cfg(feature = "wasm")]
     fn parse_wasm_meta(&self, path: &Path) -> Result<ScriptMeta, ScriptError> {
         let bytes = std::fs::read(path)?;
-        let meta_json = extract_wasm_custom_section(&bytes, "rustmap")
-            .ok_or_else(|| ScriptError::Discovery(
-                format!("WASM module {} missing 'rustmap' custom section", path.display())
-            ))?;
-        let meta: WasmMetadata = serde_json::from_slice(&meta_json)
-            .map_err(|e| ScriptError::Discovery(
-                format!("invalid metadata in {}: {e}", path.display())
-            ))?;
+        let meta_json = extract_wasm_custom_section(&bytes, "rustmap").ok_or_else(|| {
+            ScriptError::Discovery(format!(
+                "WASM module {} missing 'rustmap' custom section",
+                path.display()
+            ))
+        })?;
+        let meta: WasmMetadata = serde_json::from_slice(&meta_json).map_err(|e| {
+            ScriptError::Discovery(format!("invalid metadata in {}: {e}", path.display()))
+        })?;
 
         let id = path
             .file_stem()
             .and_then(|s| s.to_str())
-            .ok_or_else(|| ScriptError::Discovery(
-                format!("invalid script filename: {}", path.display())
-            ))?
+            .ok_or_else(|| {
+                ScriptError::Discovery(format!("invalid script filename: {}", path.display()))
+            })?
             .to_string();
 
         Ok(ScriptMeta {
             id,
             path: path.to_path_buf(),
             description: meta.summary,
-            categories: meta.categories.iter()
+            categories: meta
+                .categories
+                .iter()
                 .filter_map(|s| ScriptCategory::from_str_loose(s))
                 .collect(),
-            phases: meta.phases.iter()
-                .filter_map(|s| parse_phase(s))
-                .collect(),
+            phases: meta.phases.iter().filter_map(|s| parse_phase(s)).collect(),
             dependencies: meta.dependencies,
             language: ScriptLanguage::Wasm,
         })
@@ -255,8 +247,7 @@ impl ScriptDiscovery {
             // Check if it's a category name
             if let Some(category) = ScriptCategory::from_str_loose(pattern) {
                 for script in &self.scripts {
-                    if script.categories.contains(&category) && seen_ids.insert(script.id.clone())
-                    {
+                    if script.categories.contains(&category) && seen_ids.insert(script.id.clone()) {
                         results.push(script.clone());
                     }
                 }
@@ -595,11 +586,7 @@ mod tests {
         fs::write(dir.join(format!("{name}.lua")), content).unwrap();
     }
 
-    fn sample_script_content(
-        summary: &str,
-        categories: &[&str],
-        phases: &[&str],
-    ) -> String {
+    fn sample_script_content(summary: &str, categories: &[&str], phases: &[&str]) -> String {
         let cats = categories
             .iter()
             .map(|c| format!("\"{c}\""))
@@ -659,8 +646,7 @@ end
 
     #[test]
     fn discover_nonexistent_dir_ok() {
-        let mut discovery =
-            ScriptDiscovery::new(vec![PathBuf::from("/nonexistent/path/xyzzy")]);
+        let mut discovery = ScriptDiscovery::new(vec![PathBuf::from("/nonexistent/path/xyzzy")]);
         let scripts = discovery.discover().unwrap();
         assert!(scripts.is_empty());
     }
@@ -943,8 +929,7 @@ import socket
 
     /// Find the real scripts directory relative to the crate root.
     fn real_scripts_dir() -> PathBuf {
-        let manifest = std::env::var("CARGO_MANIFEST_DIR")
-            .unwrap_or_else(|_| ".".into());
+        let manifest = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".into());
         PathBuf::from(manifest).join("scripts")
     }
 
@@ -983,11 +968,7 @@ import socket
                 "{} has no categories",
                 script.id
             );
-            assert!(
-                !script.phases.is_empty(),
-                "{} has no phases",
-                script.id
-            );
+            assert!(!script.phases.is_empty(), "{} has no phases", script.id);
         }
     }
 
@@ -1001,29 +982,51 @@ import socket
         let scripts = discovery.discover().unwrap();
 
         let new_scripts = [
-            "http-robots", "http-security-headers", "http-favicon-hash",
-            "http-open-redirect", "http-cors", "py-http-headers-full",
-            "smb-os-discovery", "smb-protocols", "smb-security-mode",
-            "nbstat", "smb2-time",
-            "mongodb-info", "memcached-info", "redis-info", "postgresql-info",
-            "dns-recursion", "dns-zone-transfer", "dns-service-discovery",
-            "snmp-info", "snmp-sysdescr", "snmp-interfaces",
-            "ldap-rootdse", "ldap-search", "py-ldap-info",
-            "rdp-ntlm-info", "rdp-enum-encryption", "vnc-info",
-            "ntp-info", "ntp-monlist",
-            "mqtt-subscribe", "mqtt-version",
-            "sip-methods", "sip-enum-users",
-            "imap-capabilities", "pop3-capabilities", "imap-ntlm-info",
-            "docker-version", "docker-containers",
-            "pptp-version", "rtsp-methods",
+            "http-robots",
+            "http-security-headers",
+            "http-favicon-hash",
+            "http-open-redirect",
+            "http-cors",
+            "py-http-headers-full",
+            "smb-os-discovery",
+            "smb-protocols",
+            "smb-security-mode",
+            "nbstat",
+            "smb2-time",
+            "mongodb-info",
+            "memcached-info",
+            "redis-info",
+            "postgresql-info",
+            "dns-recursion",
+            "dns-zone-transfer",
+            "dns-service-discovery",
+            "snmp-info",
+            "snmp-sysdescr",
+            "snmp-interfaces",
+            "ldap-rootdse",
+            "ldap-search",
+            "py-ldap-info",
+            "rdp-ntlm-info",
+            "rdp-enum-encryption",
+            "vnc-info",
+            "ntp-info",
+            "ntp-monlist",
+            "mqtt-subscribe",
+            "mqtt-version",
+            "sip-methods",
+            "sip-enum-users",
+            "imap-capabilities",
+            "pop3-capabilities",
+            "imap-ntlm-info",
+            "docker-version",
+            "docker-containers",
+            "pptp-version",
+            "rtsp-methods",
         ];
 
         for script_id in &new_scripts {
             let script = scripts.iter().find(|s| s.id == *script_id);
-            assert!(
-                script.is_some(),
-                "Script '{script_id}' not discovered"
-            );
+            assert!(script.is_some(), "Script '{script_id}' not discovered");
             let script = script.unwrap();
             assert!(
                 script.categories.contains(&ScriptCategory::Safe),
@@ -1078,7 +1081,12 @@ import socket
         let mut discovery = ScriptDiscovery::new(vec![dir]);
         let scripts = discovery.discover().unwrap();
 
-        let db_scripts = ["mongodb-info", "memcached-info", "redis-info", "postgresql-info"];
+        let db_scripts = [
+            "mongodb-info",
+            "memcached-info",
+            "redis-info",
+            "postgresql-info",
+        ];
         for id in &db_scripts {
             assert!(
                 scripts.iter().any(|s| s.id == *id),
@@ -1098,8 +1106,12 @@ import socket
         let scripts = discovery.discover().unwrap();
 
         let udp_scripts = [
-            "snmp-info", "snmp-sysdescr", "snmp-interfaces",
-            "ntp-info", "ntp-monlist", "nbstat",
+            "snmp-info",
+            "snmp-sysdescr",
+            "snmp-interfaces",
+            "ntp-info",
+            "ntp-monlist",
+            "nbstat",
         ];
         for id in &udp_scripts {
             assert!(
@@ -1204,7 +1216,10 @@ import socket
         assert_eq!(super::read_leb128_u32(&[0x00]), Some((0, 1)));
         assert_eq!(super::read_leb128_u32(&[0x7f]), Some((127, 1)));
         assert_eq!(super::read_leb128_u32(&[0x80, 0x01]), Some((128, 2)));
-        assert_eq!(super::read_leb128_u32(&[0xe5, 0x8e, 0x26]), Some((624485, 3)));
+        assert_eq!(
+            super::read_leb128_u32(&[0xe5, 0x8e, 0x26]),
+            Some((624485, 3))
+        );
     }
 
     #[cfg(feature = "wasm")]

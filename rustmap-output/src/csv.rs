@@ -93,7 +93,10 @@ impl OutputFormatter for CsvFormatter {
 
 fn csv_escape(s: &str) -> String {
     let needs_quoting = s.contains(',') || s.contains('"') || s.contains('\n') || s.contains('\r');
-    let has_formula_prefix = matches!(s.as_bytes().first(), Some(b'=' | b'+' | b'-' | b'@' | b'\t' | b'\r'));
+    let has_formula_prefix = matches!(
+        s.as_bytes().first(),
+        Some(b'=' | b'+' | b'-' | b'@' | b'\t' | b'\r')
+    );
 
     if has_formula_prefix {
         // Prepend single-quote to neutralize formula interpretation in spreadsheets

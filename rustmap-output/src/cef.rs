@@ -23,8 +23,10 @@ impl OutputFormatter for CefFormatter {
                 }
                 let severity = cef_severity(host.risk_score);
                 let svc = port.service.as_deref().unwrap_or("unknown");
-                let event_id = cef_header_escape(&format!("port-{}-{}", port.protocol, port.number));
-                let name = cef_header_escape(&format!("{}/{} {} open", port.number, port.protocol, svc));
+                let event_id =
+                    cef_header_escape(&format!("port-{}-{}", port.protocol, port.number));
+                let name =
+                    cef_header_escape(&format!("{}/{} {} open", port.number, port.protocol, svc));
 
                 // CEF header
                 write!(
@@ -106,8 +108,8 @@ fn cef_severity(risk: Option<f64>) -> u8 {
 /// Escape CEF header field special characters: pipe and backslash.
 fn cef_header_escape(s: &str) -> String {
     s.replace('\\', "\\\\")
-     .replace('|', "\\|")
-     .replace(['\n', '\r'], " ")
+        .replace('|', "\\|")
+        .replace(['\n', '\r'], " ")
 }
 
 /// Escape CEF special characters: \ = and newlines.
@@ -122,8 +124,8 @@ fn cef_escape(s: &str) -> String {
 mod tests {
     use super::*;
     use rustmap_types::{
-        Host, HostScanResult, HostStatus, Port, PortState, Protocol, ScanType, ServiceInfo,
-        DetectionMethod,
+        DetectionMethod, Host, HostScanResult, HostStatus, Port, PortState, Protocol, ScanType,
+        ServiceInfo,
     };
     use std::net::{IpAddr, Ipv4Addr};
     use std::time::Duration;

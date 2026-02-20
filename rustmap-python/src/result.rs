@@ -199,7 +199,12 @@ impl PyHostScanResult {
     }
 
     fn __repr__(&self) -> String {
-        let open_count = self.inner.ports.iter().filter(|p| p.state == PortState::Open).count();
+        let open_count = self
+            .inner
+            .ports
+            .iter()
+            .filter(|p| p.state == PortState::Open)
+            .count();
         format!(
             "HostScanResult(ip='{}', status='{}', ports={}, open={})",
             self.inner.host.ip,

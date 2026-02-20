@@ -38,7 +38,7 @@ impl ServiceProbe {
         let mut stream = match connect_tcp(addr, proxy, probe_timeout).await {
             Ok(s) => s,
             Err(e) if e.kind() == std::io::ErrorKind::TimedOut => {
-                return Err(DetectionError::Timeout)
+                return Err(DetectionError::Timeout);
             }
             Err(e) => return Err(DetectionError::Connection(e.to_string())),
         };
@@ -50,7 +50,12 @@ impl ServiceProbe {
             Err(_) => return Err(DetectionError::Timeout),
         }
 
-        debug!("sent probe '{}' ({} bytes) to {}", self.name, self.payload.len(), addr);
+        debug!(
+            "sent probe '{}' ({} bytes) to {}",
+            self.name,
+            self.payload.len(),
+            addr
+        );
 
         // Read response
         let mut buf = vec![0u8; MAX_RESPONSE_SIZE];
@@ -58,12 +63,18 @@ impl ServiceProbe {
             Ok(Ok(0)) => Ok(None),
             Ok(Ok(n)) => {
                 buf.truncate(n);
-                debug!("received {} byte response from {} for probe '{}'", n, addr, self.name);
+                debug!(
+                    "received {} byte response from {} for probe '{}'",
+                    n, addr, self.name
+                );
                 Ok(Some(buf))
             }
             Ok(Err(e)) => Err(DetectionError::Io(e)),
             Err(_) => {
-                debug!("timeout reading response from {} for probe '{}'", addr, self.name);
+                debug!(
+                    "timeout reading response from {} for probe '{}'",
+                    addr, self.name
+                );
                 Ok(None)
             }
         }

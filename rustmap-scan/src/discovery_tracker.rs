@@ -37,12 +37,15 @@ impl DiscoveryTracker {
         let hosts = DashMap::new();
         let now = Instant::now();
         for &ip in targets {
-            hosts.insert(ip, HostDiscoveryState {
-                status: HostStatus::Down,
-                last_probe_sent: now,
-                latency: None,
-                probes_sent: 0,
-            });
+            hosts.insert(
+                ip,
+                HostDiscoveryState {
+                    status: HostStatus::Down,
+                    last_probe_sent: now,
+                    latency: None,
+                    probes_sent: 0,
+                },
+            );
         }
         Self {
             total_hosts: targets.len(),

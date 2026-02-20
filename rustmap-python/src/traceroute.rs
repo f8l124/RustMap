@@ -82,6 +82,9 @@ impl PyTracerouteHop {
             .rtt
             .map(|d| format!("{:.3}ms", d.as_secs_f64() * 1000.0))
             .unwrap_or_else(|| "*".to_string());
-        format!("TracerouteHop(ttl={}, ip='{}', rtt={})", self.inner.ttl, ip, rtt)
+        format!(
+            "TracerouteHop(ttl={}, ip='{}', rtt={})",
+            self.inner.ttl, ip, rtt
+        )
     }
 }

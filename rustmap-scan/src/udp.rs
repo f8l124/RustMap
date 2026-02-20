@@ -7,9 +7,9 @@ use tokio::sync::Notify;
 use tracing::{debug, info, warn};
 
 use rustmap_packet::{
-    CaptureConfig, CapturedResponse, PacketReceiver, PacketSender, ResponseType,
-    create_capture, create_sender, fragment_ipv4_packet, udp_bpf_filter,
-    udp_fixed_port_bpf_filter, udp_payloads::udp_payload_for_port,
+    CaptureConfig, CapturedResponse, PacketReceiver, PacketSender, ResponseType, create_capture,
+    create_sender, fragment_ipv4_packet, udp_bpf_filter, udp_fixed_port_bpf_filter,
+    udp_payloads::udp_payload_for_port,
 };
 use rustmap_timing::{TimingController, TimingParams};
 use rustmap_types::{Host, HostScanResult, Port, PortState, ScanConfig, TimingSnapshot};
@@ -142,14 +142,7 @@ impl Scanner for UdpScanner {
             let done_notify = done_notify.clone();
 
             tokio::spawn(async move {
-                response_processor(
-                    &mut capture,
-                    target_ip,
-                    &timing,
-                    &tracker,
-                    &done_notify,
-                )
-                .await;
+                response_processor(&mut capture, target_ip, &timing, &tracker, &done_notify).await;
                 debug!("UDP response processor finished");
             })
         };
@@ -365,11 +358,7 @@ async fn response_processor(
 }
 
 /// Process a single captured response for UDP scanning.
-fn handle_response(
-    response: &CapturedResponse,
-    timing: &TimingController,
-    tracker: &ProbeTracker,
-) {
+fn handle_response(response: &CapturedResponse, timing: &TimingController, tracker: &ProbeTracker) {
     let port_state = match response.response_type {
         // Direct UDP response → port is open
         ResponseType::UdpResponse => PortState::Open,
@@ -550,7 +539,11 @@ mod tests {
 
         let results = tracker.collect_results();
         assert_eq!(results.len(), 1);
-        assert!(results.iter().any(|(p, s)| *p == 53 && *s == PortState::Open));
+        assert!(
+            results
+                .iter()
+                .any(|(p, s)| *p == 53 && *s == PortState::Open)
+        );
     }
 
     #[test]
@@ -576,7 +569,11 @@ mod tests {
         handle_response(&response, &timing, &tracker);
 
         let results = tracker.collect_results();
-        assert!(results.iter().any(|(p, s)| *p == 161 && *s == PortState::Closed));
+        assert!(
+            results
+                .iter()
+                .any(|(p, s)| *p == 161 && *s == PortState::Closed)
+        );
     }
 
     #[test]
@@ -602,9 +599,11 @@ mod tests {
         handle_response(&response, &timing, &tracker);
 
         let results = tracker.collect_results();
-        assert!(results
-            .iter()
-            .any(|(p, s)| *p == 123 && *s == PortState::Filtered));
+        assert!(
+            results
+                .iter()
+                .any(|(p, s)| *p == 123 && *s == PortState::Filtered)
+        );
     }
 
     #[test]

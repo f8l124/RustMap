@@ -3,15 +3,15 @@
 // ---------------------------------------------------------------------------
 
 use std::collections::HashMap;
-use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
+use std::sync::atomic::AtomicUsize;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use rustmap_db::ScanStore;
 use rustmap_types::{HostScanResult, ScanResult};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
-use tokio::sync::{broadcast, Mutex, RwLock};
+use tokio::sync::{Mutex, RwLock, broadcast};
 use tokio_util::sync::CancellationToken;
 
 /// Status of a scan tracked by the API server.
@@ -86,8 +86,7 @@ fn hash_api_key(key: &str) -> [u8; 32] {
 
 impl AppState {
     pub fn new(api_key: Option<String>) -> Self {
-        let store =
-            ScanStore::open_default().expect("failed to open scan database");
+        let store = ScanStore::open_default().expect("failed to open scan database");
         Self {
             scans: RwLock::new(HashMap::new()),
             store: Mutex::new(store),
@@ -100,8 +99,7 @@ impl AppState {
 
     /// Create an AppState with an in-memory database (for testing).
     pub fn new_in_memory(api_key: Option<String>) -> Self {
-        let store =
-            ScanStore::open_in_memory().expect("failed to open in-memory database");
+        let store = ScanStore::open_in_memory().expect("failed to open in-memory database");
         Self {
             scans: RwLock::new(HashMap::new()),
             store: Mutex::new(store),

@@ -12,22 +12,25 @@ pub mod udp_payloads;
 
 #[cfg(windows)]
 pub mod net_windows;
-#[cfg(windows)]
-pub mod sender_windows;
 #[cfg(target_os = "linux")]
 pub mod sender_linux;
-
 #[cfg(windows)]
-mod privilege_windows;
+pub mod sender_windows;
+
 #[cfg(target_os = "linux")]
 mod privilege_linux;
+#[cfg(windows)]
+mod privilege_windows;
 
-pub use capture::{AsyncCapture, CaptureConfig, fixed_port_bpf_filter, list_interfaces, udp_bpf_filter, udp_fixed_port_bpf_filter};
+pub use capture::{
+    AsyncCapture, CaptureConfig, fixed_port_bpf_filter, list_interfaces, udp_bpf_filter,
+    udp_fixed_port_bpf_filter,
+};
+pub use fragment::fragment_ipv4_packet;
 pub use platform::{create_capture, create_sender};
-pub use privilege::{check_privileges, PacketError, PrivilegeLevel};
 #[cfg(windows)]
 pub use privilege::npcap_installed;
-pub use fragment::fragment_ipv4_packet;
+pub use privilege::{PacketError, PrivilegeLevel, check_privileges};
 pub use rst_suppress::RstSuppressGuard;
 pub use tcp_flags::TcpFlags;
 pub use traits::{CapturedResponse, PacketReceiver, PacketSender, ResponseType, rand_seq};

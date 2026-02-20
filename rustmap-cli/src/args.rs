@@ -373,7 +373,11 @@ pub struct Args {
     pub api: bool,
 
     /// Listen address for the API server (default: 127.0.0.1:8080)
-    #[arg(long = "listen", value_name = "ADDR:PORT", default_value = "127.0.0.1:8080")]
+    #[arg(
+        long = "listen",
+        value_name = "ADDR:PORT",
+        default_value = "127.0.0.1:8080"
+    )]
     pub listen: String,
 
     /// Bearer token for API authentication (optional)

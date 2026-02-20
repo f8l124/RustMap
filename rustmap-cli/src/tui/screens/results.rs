@@ -57,10 +57,7 @@ pub fn render(
             ""
         },
     );
-    frame.render_widget(
-        Paragraph::new(summary).style(theme::STATUS_BAR),
-        chunks[0],
-    );
+    frame.render_widget(Paragraph::new(summary).style(theme::STATUS_BAR), chunks[0]);
 
     // Main: hosts(40%) + detail(60%)
     let main_chunks = Layout::default()
@@ -134,14 +131,18 @@ fn render_host_list(
         theme::PANEL_INACTIVE_HIGHLIGHT
     };
 
-    let header = Row::new(vec!["IP", "Status", "Open"])
-        .style(Style::default().add_modifier(Modifier::BOLD));
+    let header =
+        Row::new(vec!["IP", "Status", "Open"]).style(Style::default().add_modifier(Modifier::BOLD));
 
     let rows: Vec<Row> = result
         .hosts
         .iter()
         .map(|h| {
-            let open_count = h.ports.iter().filter(|p| p.state == PortState::Open).count();
+            let open_count = h
+                .ports
+                .iter()
+                .filter(|p| p.state == PortState::Open)
+                .count();
             let status_str = match h.host_status {
                 HostStatus::Up => "up",
                 HostStatus::Down => "down",
@@ -248,45 +249,45 @@ fn render_detail(
         && let Some(port) = ports.get(idx)
     {
         if let Some(ref tls) = port.tls_info {
-                lines.push(Line::from(""));
-                lines.push(Line::from(Span::styled(
-                    format!("=== TLS Info ({}/{}) ===", port.number, port.protocol),
-                    theme::TEXT_BOLD,
-                )));
-                lines.push(Line::from(format!(
-                    "  Version:  TLS 1.{}",
-                    tls.tls_version.saturating_sub(0x0301)
-                )));
-                lines.push(Line::from(format!(
-                    "  Cipher:   0x{:04X}",
-                    tls.cipher_suite
-                )));
-                if let Some(ref alpn) = tls.alpn {
-                    lines.push(Line::from(format!("  ALPN:     {alpn}")));
-                }
-                if let Some(ref ja4s) = tls.ja4s {
-                    lines.push(Line::from(format!("  JA4S:     {ja4s}")));
-                }
-                if let Some(ref certs) = tls.certificate_chain {
-                    for cert in certs {
-                        if let Some(ref cn) = cert.subject_cn {
-                            lines.push(Line::from(format!("  Subject:  {cn}")));
-                        }
-                        if let Some(ref issuer) = cert.issuer_cn {
-                            lines.push(Line::from(format!("  Issuer:   {issuer}")));
-                        }
-                        if let Some(ref na) = cert.not_after {
-                            lines.push(Line::from(format!("  Expires:  {na}")));
-                        }
-                        if !cert.san_dns.is_empty() {
-                            lines.push(Line::from(format!(
-                                "  SANs:     {}",
-                                cert.san_dns.join(", ")
-                            )));
-                        }
+            lines.push(Line::from(""));
+            lines.push(Line::from(Span::styled(
+                format!("=== TLS Info ({}/{}) ===", port.number, port.protocol),
+                theme::TEXT_BOLD,
+            )));
+            lines.push(Line::from(format!(
+                "  Version:  TLS 1.{}",
+                tls.tls_version.saturating_sub(0x0301)
+            )));
+            lines.push(Line::from(format!(
+                "  Cipher:   0x{:04X}",
+                tls.cipher_suite
+            )));
+            if let Some(ref alpn) = tls.alpn {
+                lines.push(Line::from(format!("  ALPN:     {alpn}")));
+            }
+            if let Some(ref ja4s) = tls.ja4s {
+                lines.push(Line::from(format!("  JA4S:     {ja4s}")));
+            }
+            if let Some(ref certs) = tls.certificate_chain {
+                for cert in certs {
+                    if let Some(ref cn) = cert.subject_cn {
+                        lines.push(Line::from(format!("  Subject:  {cn}")));
+                    }
+                    if let Some(ref issuer) = cert.issuer_cn {
+                        lines.push(Line::from(format!("  Issuer:   {issuer}")));
+                    }
+                    if let Some(ref na) = cert.not_after {
+                        lines.push(Line::from(format!("  Expires:  {na}")));
+                    }
+                    if !cert.san_dns.is_empty() {
+                        lines.push(Line::from(format!(
+                            "  SANs:     {}",
+                            cert.san_dns.join(", ")
+                        )));
                     }
                 }
             }
+        }
 
         // Script results for selected port
         if !port.script_results.is_empty() {
@@ -326,10 +327,7 @@ fn render_detail(
             theme::TEXT_BOLD,
         )));
         for hop in &tr.hops {
-            let ip = hop
-                .ip
-                .map(|a| a.to_string())
-                .unwrap_or_else(|| "*".into());
+            let ip = hop.ip.map(|a| a.to_string()).unwrap_or_else(|| "*".into());
             let host_name = hop.hostname.as_deref().unwrap_or("");
             let rtt = hop
                 .rtt

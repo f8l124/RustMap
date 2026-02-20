@@ -244,6 +244,9 @@ mod tests {
             tls_info: None,
         };
         let json = serde_json::to_string(&port).unwrap();
-        assert!(!json.contains("tls_info"), "tls_info should be skipped when None");
+        assert!(
+            !json.contains("tls_info"),
+            "tls_info should be skipped when None"
+        );
     }
 }

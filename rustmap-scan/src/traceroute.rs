@@ -64,7 +64,12 @@ pub async fn trace_route(
         // Send probe with this TTL
         let probe_result = if use_tcp {
             let pkt = rustmap_packet::build::build_syn_packet_with_ttl(
-                src_ip, src_port, target_ip, dst_port, rand_seq(), ttl,
+                src_ip,
+                src_port,
+                target_ip,
+                dst_port,
+                rand_seq(),
+                ttl,
             )?;
             sender.send_raw(src_ip, target_ip, &pkt).await
         } else {
@@ -202,7 +207,10 @@ fn get_src_ip_v4(target: IpAddr) -> IpAddr {
         warn!("failed to bind UDP socket for source IP detection");
         return IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED);
     };
-    if socket.connect(std::net::SocketAddr::new(target, 80)).is_err() {
+    if socket
+        .connect(std::net::SocketAddr::new(target, 80))
+        .is_err()
+    {
         warn!(%target, "failed to connect UDP socket for source IP detection");
         return IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED);
     }
@@ -218,7 +226,10 @@ fn get_src_ip_v6(target: IpAddr) -> IpAddr {
         warn!("failed to bind IPv6 UDP socket for source IP detection");
         return IpAddr::V6(std::net::Ipv6Addr::UNSPECIFIED);
     };
-    if socket.connect(std::net::SocketAddr::new(target, 80)).is_err() {
+    if socket
+        .connect(std::net::SocketAddr::new(target, 80))
+        .is_err()
+    {
         warn!(%target, "failed to connect IPv6 UDP socket for source IP detection");
         return IpAddr::V6(std::net::Ipv6Addr::UNSPECIFIED);
     }

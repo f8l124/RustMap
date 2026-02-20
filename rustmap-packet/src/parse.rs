@@ -45,12 +45,8 @@ fn parse_sliced_packet(packet: &SlicedPacket<'_>, timestamp: Instant) -> Option<
 
 fn extract_src_ip(net: &etherparse::NetSlice<'_>) -> Option<IpAddr> {
     match net {
-        etherparse::NetSlice::Ipv4(ipv4) => {
-            Some(IpAddr::V4(ipv4.header().source_addr()))
-        }
-        etherparse::NetSlice::Ipv6(ipv6) => {
-            Some(IpAddr::V6(ipv6.header().source_addr()))
-        }
+        etherparse::NetSlice::Ipv4(ipv4) => Some(IpAddr::V4(ipv4.header().source_addr())),
+        etherparse::NetSlice::Ipv6(ipv6) => Some(IpAddr::V6(ipv6.header().source_addr())),
     }
 }
 
@@ -92,17 +88,15 @@ fn try_parse_udp(packet: &SlicedPacket<'_>, timestamp: Instant) -> Option<Captur
 
     let transport = packet.transport.as_ref()?;
     match transport {
-        etherparse::TransportSlice::Udp(udp) => {
-            Some(CapturedResponse {
-                src_ip,
-                src_port: udp.source_port(),
-                dst_port: udp.destination_port(),
-                response_type: ResponseType::UdpResponse,
-                timestamp,
-                tcp_fingerprint: None,
-                next_hop_mtu: None,
-            })
-        }
+        etherparse::TransportSlice::Udp(udp) => Some(CapturedResponse {
+            src_ip,
+            src_port: udp.source_port(),
+            dst_port: udp.destination_port(),
+            response_type: ResponseType::UdpResponse,
+            timestamp,
+            tcp_fingerprint: None,
+            next_hop_mtu: None,
+        }),
         _ => None,
     }
 }
@@ -229,7 +223,10 @@ fn try_parse_icmp(packet: &SlicedPacket<'_>, timestamp: Instant) -> Option<Captu
             match header.icmp_type {
                 etherparse::Icmpv4Type::DestinationUnreachable(ref dest_header) => {
                     // Check for Fragmentation Needed (code 4) — used for MTU discovery
-                    if let etherparse::icmpv4::DestUnreachableHeader::FragmentationNeeded { next_hop_mtu } = dest_header {
+                    if let etherparse::icmpv4::DestUnreachableHeader::FragmentationNeeded {
+                        next_hop_mtu,
+                    } = dest_header
+                    {
                         return Some(CapturedResponse {
                             src_ip,
                             src_port: 0,
@@ -242,34 +239,28 @@ fn try_parse_icmp(packet: &SlicedPacket<'_>, timestamp: Instant) -> Option<Captu
                     }
                     let payload = icmp.payload();
                     // Determine if this is specifically port unreachable (code 3)
-                    let is_port_unreachable = matches!(
-                        dest_header,
-                        etherparse::icmpv4::DestUnreachableHeader::Port
-                    );
+                    let is_port_unreachable =
+                        matches!(dest_header, etherparse::icmpv4::DestUnreachableHeader::Port);
                     parse_icmp_embedded(payload, timestamp, is_port_unreachable)
                 }
-                etherparse::Icmpv4Type::EchoReply(_) => {
-                    Some(CapturedResponse {
-                        src_ip,
-                        src_port: 0,
-                        dst_port: 0,
-                        response_type: ResponseType::IcmpEchoReply,
-                        timestamp,
-                        tcp_fingerprint: None,
-                        next_hop_mtu: None,
-                    })
-                }
-                etherparse::Icmpv4Type::TimestampReply(_) => {
-                    Some(CapturedResponse {
-                        src_ip,
-                        src_port: 0,
-                        dst_port: 0,
-                        response_type: ResponseType::IcmpTimestampReply,
-                        timestamp,
-                        tcp_fingerprint: None,
-                        next_hop_mtu: None,
-                    })
-                }
+                etherparse::Icmpv4Type::EchoReply(_) => Some(CapturedResponse {
+                    src_ip,
+                    src_port: 0,
+                    dst_port: 0,
+                    response_type: ResponseType::IcmpEchoReply,
+                    timestamp,
+                    tcp_fingerprint: None,
+                    next_hop_mtu: None,
+                }),
+                etherparse::Icmpv4Type::TimestampReply(_) => Some(CapturedResponse {
+                    src_ip,
+                    src_port: 0,
+                    dst_port: 0,
+                    response_type: ResponseType::IcmpTimestampReply,
+                    timestamp,
+                    tcp_fingerprint: None,
+                    next_hop_mtu: None,
+                }),
                 etherparse::Icmpv4Type::TimeExceeded(_) => {
                     // TTL expired — intermediate router in traceroute
                     Some(CapturedResponse {
@@ -290,23 +281,19 @@ fn try_parse_icmp(packet: &SlicedPacket<'_>, timestamp: Instant) -> Option<Captu
             match header.icmp_type {
                 etherparse::Icmpv6Type::DestinationUnreachable(ref code) => {
                     let payload = icmpv6.payload();
-                    let is_port_unreachable = matches!(
-                        code,
-                        etherparse::icmpv6::DestUnreachableCode::Port
-                    );
+                    let is_port_unreachable =
+                        matches!(code, etherparse::icmpv6::DestUnreachableCode::Port);
                     parse_icmpv6_embedded(payload, timestamp, is_port_unreachable)
                 }
-                etherparse::Icmpv6Type::EchoReply(_) => {
-                    Some(CapturedResponse {
-                        src_ip,
-                        src_port: 0,
-                        dst_port: 0,
-                        response_type: ResponseType::IcmpEchoReply,
-                        timestamp,
-                        tcp_fingerprint: None,
-                        next_hop_mtu: None,
-                    })
-                }
+                etherparse::Icmpv6Type::EchoReply(_) => Some(CapturedResponse {
+                    src_ip,
+                    src_port: 0,
+                    dst_port: 0,
+                    response_type: ResponseType::IcmpEchoReply,
+                    timestamp,
+                    tcp_fingerprint: None,
+                    next_hop_mtu: None,
+                }),
                 etherparse::Icmpv6Type::TimeExceeded(_) => {
                     // Hop limit expired — intermediate router in traceroute
                     Some(CapturedResponse {
@@ -378,17 +365,15 @@ fn parse_icmpv6_embedded(
     // Try TCP/UDP via etherparse first
     if let Some(transport) = embedded.transport.as_ref() {
         return match transport {
-            etherparse::TransportSlice::Tcp(tcp) => {
-                Some(CapturedResponse {
-                    src_ip: target_ip,
-                    src_port: tcp.destination_port(),
-                    dst_port: tcp.source_port(),
-                    response_type: ResponseType::IcmpUnreachable,
-                    timestamp,
-                    tcp_fingerprint: None,
-                    next_hop_mtu: None,
-                })
-            }
+            etherparse::TransportSlice::Tcp(tcp) => Some(CapturedResponse {
+                src_ip: target_ip,
+                src_port: tcp.destination_port(),
+                dst_port: tcp.source_port(),
+                response_type: ResponseType::IcmpUnreachable,
+                timestamp,
+                tcp_fingerprint: None,
+                next_hop_mtu: None,
+            }),
             etherparse::TransportSlice::Udp(udp) => {
                 let response_type = if is_port_unreachable {
                     ResponseType::IcmpPortUnreachable
@@ -526,7 +511,7 @@ mod tests {
     fn parse_syn_ack() {
         // Build a SYN+ACK response packet
         let builder = etherparse::PacketBuilder::ipv4(
-            [192, 168, 1, 1],  // source (target responding)
+            [192, 168, 1, 1],   // source (target responding)
             [192, 168, 1, 100], // dest (our machine)
             64,
         )
@@ -547,13 +532,9 @@ mod tests {
 
     #[test]
     fn parse_rst() {
-        let builder = etherparse::PacketBuilder::ipv4(
-            [10, 0, 0, 1],
-            [10, 0, 0, 100],
-            64,
-        )
-        .tcp(443, 40002, 0, 0)
-        .rst();
+        let builder = etherparse::PacketBuilder::ipv4([10, 0, 0, 1], [10, 0, 0, 100], 64)
+            .tcp(443, 40002, 0, 0)
+            .rst();
 
         let mut buf = Vec::new();
         builder.write(&mut buf, &[]).unwrap();
@@ -568,13 +549,9 @@ mod tests {
     #[test]
     fn ignores_non_syn_ack_non_rst() {
         // Build a plain ACK (no SYN, no RST)
-        let builder = etherparse::PacketBuilder::ipv4(
-            [10, 0, 0, 1],
-            [10, 0, 0, 100],
-            64,
-        )
-        .tcp(80, 40003, 100, 65535)
-        .ack(200);
+        let builder = etherparse::PacketBuilder::ipv4([10, 0, 0, 1], [10, 0, 0, 100], 64)
+            .tcp(80, 40003, 100, 65535)
+            .ack(200);
 
         let mut buf = Vec::new();
         builder.write(&mut buf, &[]).unwrap();
@@ -630,12 +607,8 @@ mod tests {
     fn parse_icmp_timestamp_reply() {
         // Build an ICMP timestamp reply (type 14, code 0)
         let bytes5to8 = [0x12u8, 0x34, 0x00, 0x01]; // id=0x1234, seq=1
-        let builder = etherparse::PacketBuilder::ipv4(
-            [10, 0, 0, 1],
-            [10, 0, 0, 100],
-            64,
-        )
-        .icmpv4_raw(14, 0, bytes5to8);
+        let builder = etherparse::PacketBuilder::ipv4([10, 0, 0, 1], [10, 0, 0, 100], 64)
+            .icmpv4_raw(14, 0, bytes5to8);
 
         // 12-byte timestamp payload
         let payload = [0u8; 12];
@@ -746,23 +719,15 @@ mod tests {
     #[test]
     fn parse_icmp_admin_prohibited_with_udp() {
         // Build the original UDP probe
-        let udp_builder = etherparse::PacketBuilder::ipv4(
-            [10, 0, 0, 100],
-            [10, 0, 0, 1],
-            64,
-        )
-        .udp(40002, 53);
+        let udp_builder =
+            etherparse::PacketBuilder::ipv4([10, 0, 0, 100], [10, 0, 0, 1], 64).udp(40002, 53);
 
         let mut embedded_pkt = Vec::new();
         udp_builder.write(&mut embedded_pkt, &[]).unwrap();
 
         // ICMP type 3, code 13 = communication administratively prohibited
-        let icmp_builder = etherparse::PacketBuilder::ipv4(
-            [10, 0, 0, 1],
-            [10, 0, 0, 100],
-            64,
-        )
-        .icmpv4_raw(3, 13, [0u8; 4]);
+        let icmp_builder = etherparse::PacketBuilder::ipv4([10, 0, 0, 1], [10, 0, 0, 100], 64)
+            .icmpv4_raw(3, 13, [0u8; 4]);
 
         let mut buf = Vec::new();
         icmp_builder.write(&mut buf, &embedded_pkt).unwrap();
@@ -798,7 +763,10 @@ mod tests {
 
         let ts = Instant::now();
         let resp = parse_response_from_ip(&buf, ts).unwrap();
-        assert_eq!(resp.src_ip, IpAddr::V6(Ipv6Addr::new(0xfd00, 0, 0, 0, 0, 0, 0, 1)));
+        assert_eq!(
+            resp.src_ip,
+            IpAddr::V6(Ipv6Addr::new(0xfd00, 0, 0, 0, 0, 0, 0, 1))
+        );
         assert_eq!(resp.src_port, 80);
         assert_eq!(resp.dst_port, 40001);
         assert_eq!(resp.response_type, ResponseType::SynAck);
@@ -844,7 +812,10 @@ mod tests {
 
         let ts = Instant::now();
         let resp = parse_response_from_ip(&buf, ts).unwrap();
-        assert_eq!(resp.src_ip, IpAddr::V6(Ipv6Addr::new(0xfd00, 0, 0, 0, 0, 0, 0, 1)));
+        assert_eq!(
+            resp.src_ip,
+            IpAddr::V6(Ipv6Addr::new(0xfd00, 0, 0, 0, 0, 0, 0, 1))
+        );
         assert_eq!(resp.response_type, ResponseType::IcmpEchoReply);
     }
 
@@ -865,7 +836,7 @@ mod tests {
         // Build ICMPv6 destination unreachable (port) wrapping the embedded UDP
         // ICMPv6 type 1 (dest unreachable), code 4 (port unreachable)
         let icmpv6_builder = etherparse::PacketBuilder::ipv6(
-            Ipv6Addr::new(0xfd00, 0, 0, 0, 0, 0, 0, 1).octets(),   // responder
+            Ipv6Addr::new(0xfd00, 0, 0, 0, 0, 0, 0, 1).octets(), // responder
             Ipv6Addr::new(0xfd00, 0, 0, 0, 0, 0, 0, 100).octets(), // our machine
             64,
         )
@@ -876,7 +847,10 @@ mod tests {
 
         let ts = Instant::now();
         let resp = parse_response_from_ip(&buf, ts).unwrap();
-        assert_eq!(resp.src_ip, IpAddr::V6(Ipv6Addr::new(0xfd00, 0, 0, 0, 0, 0, 0, 1)));
+        assert_eq!(
+            resp.src_ip,
+            IpAddr::V6(Ipv6Addr::new(0xfd00, 0, 0, 0, 0, 0, 0, 1))
+        );
         assert_eq!(resp.src_port, 161);
         assert_eq!(resp.dst_port, 40001);
         assert_eq!(resp.response_type, ResponseType::IcmpPortUnreachable);
@@ -898,7 +872,10 @@ mod tests {
 
         let ts = Instant::now();
         let resp = parse_response_from_ip(&buf, ts).unwrap();
-        assert_eq!(resp.src_ip, IpAddr::V6(Ipv6Addr::new(0xfd00, 0, 0, 0, 0, 0, 0, 1)));
+        assert_eq!(
+            resp.src_ip,
+            IpAddr::V6(Ipv6Addr::new(0xfd00, 0, 0, 0, 0, 0, 0, 1))
+        );
         assert_eq!(resp.src_port, 53);
         assert_eq!(resp.dst_port, 40001);
         assert_eq!(resp.response_type, ResponseType::UdpResponse);

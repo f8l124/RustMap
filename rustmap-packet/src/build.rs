@@ -104,25 +104,45 @@ pub fn build_tcp_packet(
     macro_rules! apply_flags {
         ($builder:expr, $flags:expr) => {{
             let mut b = $builder;
-            if $flags.syn { b = b.syn(); }
-            if $flags.fin { b = b.fin(); }
-            if $flags.psh { b = b.psh(); }
-            if $flags.urg { b = b.urg(0); }
-            if $flags.ack { b = b.ack(0); }
-            if $flags.rst { b = b.rst(); }
+            if $flags.syn {
+                b = b.syn();
+            }
+            if $flags.fin {
+                b = b.fin();
+            }
+            if $flags.psh {
+                b = b.psh();
+            }
+            if $flags.urg {
+                b = b.urg(0);
+            }
+            if $flags.ack {
+                b = b.ack(0);
+            }
+            if $flags.rst {
+                b = b.rst();
+            }
             b
         }};
     }
 
     match (src_ip, dst_ip) {
         (IpAddr::V4(src), IpAddr::V4(dst)) => {
-            let builder = PacketBuilder::ipv4(src.octets(), dst.octets(), DEFAULT_TTL)
-                .tcp(src_port, dst_port, seq_num, DEFAULT_WINDOW_SIZE);
+            let builder = PacketBuilder::ipv4(src.octets(), dst.octets(), DEFAULT_TTL).tcp(
+                src_port,
+                dst_port,
+                seq_num,
+                DEFAULT_WINDOW_SIZE,
+            );
             build_packet!(apply_flags!(builder, flags))
         }
         (IpAddr::V6(src), IpAddr::V6(dst)) => {
-            let builder = PacketBuilder::ipv6(src.octets(), dst.octets(), DEFAULT_TTL)
-                .tcp(src_port, dst_port, seq_num, DEFAULT_WINDOW_SIZE);
+            let builder = PacketBuilder::ipv6(src.octets(), dst.octets(), DEFAULT_TTL).tcp(
+                src_port,
+                dst_port,
+                seq_num,
+                DEFAULT_WINDOW_SIZE,
+            );
             build_packet!(apply_flags!(builder, flags))
         }
         _ => Err(mixed_addr_err()),
@@ -491,12 +511,8 @@ pub fn build_sctp_init_packet(
     dst_port: u16,
 ) -> Result<Vec<u8>, PacketError> {
     match (src_ip, dst_ip) {
-        (IpAddr::V4(src), IpAddr::V4(dst)) => {
-            build_sctp_init_ipv4(src, dst, src_port, dst_port)
-        }
-        (IpAddr::V6(src), IpAddr::V6(dst)) => {
-            build_sctp_init_ipv6(src, dst, src_port, dst_port)
-        }
+        (IpAddr::V4(src), IpAddr::V4(dst)) => build_sctp_init_ipv4(src, dst, src_port, dst_port),
+        (IpAddr::V6(src), IpAddr::V6(dst)) => build_sctp_init_ipv6(src, dst, src_port, dst_port),
         _ => Err(mixed_addr_err()),
     }
 }
@@ -758,15 +774,13 @@ mod tests {
 
         let parsed = etherparse::SlicedPacket::from_ip(&pkt).unwrap();
         match parsed.transport.unwrap() {
-            etherparse::TransportSlice::Icmpv4(icmp) => {
-                match icmp.header().icmp_type {
-                    etherparse::Icmpv4Type::EchoRequest(echo) => {
-                        assert_eq!(echo.id, 0x1234);
-                        assert_eq!(echo.seq, 1);
-                    }
-                    other => panic!("expected EchoRequest, got {:?}", other),
+            etherparse::TransportSlice::Icmpv4(icmp) => match icmp.header().icmp_type {
+                etherparse::Icmpv4Type::EchoRequest(echo) => {
+                    assert_eq!(echo.id, 0x1234);
+                    assert_eq!(echo.seq, 1);
                 }
-            }
+                other => panic!("expected EchoRequest, got {:?}", other),
+            },
             _ => panic!("expected ICMPv4 transport"),
         }
     }
@@ -1150,15 +1164,13 @@ mod tests {
 
         let parsed = etherparse::SlicedPacket::from_ip(&pkt).unwrap();
         match parsed.transport.unwrap() {
-            etherparse::TransportSlice::Icmpv6(icmpv6) => {
-                match icmpv6.header().icmp_type {
-                    etherparse::Icmpv6Type::EchoRequest(echo) => {
-                        assert_eq!(echo.id, 0x1234);
-                        assert_eq!(echo.seq, 1);
-                    }
-                    other => panic!("expected EchoRequest, got {:?}", other),
+            etherparse::TransportSlice::Icmpv6(icmpv6) => match icmpv6.header().icmp_type {
+                etherparse::Icmpv6Type::EchoRequest(echo) => {
+                    assert_eq!(echo.id, 0x1234);
+                    assert_eq!(echo.seq, 1);
                 }
-            }
+                other => panic!("expected EchoRequest, got {:?}", other),
+            },
             _ => panic!("expected ICMPv6"),
         }
     }
@@ -1201,12 +1213,16 @@ mod tests {
         // SCTP portion starts at byte 20
         let sctp_data = &pkt[20..];
         // Read the stored checksum (bytes 8-11 of SCTP, little-endian)
-        let stored_crc = u32::from_le_bytes([sctp_data[8], sctp_data[9], sctp_data[10], sctp_data[11]]);
+        let stored_crc =
+            u32::from_le_bytes([sctp_data[8], sctp_data[9], sctp_data[10], sctp_data[11]]);
         // Zero the checksum field and recompute
         let mut verify = sctp_data.to_vec();
         verify[8..12].copy_from_slice(&[0x00; 4]);
         let computed_crc = crc32c::crc32c(&verify);
-        assert_eq!(stored_crc, computed_crc, "SCTP CRC-32c checksum should be valid");
+        assert_eq!(
+            stored_crc, computed_crc,
+            "SCTP CRC-32c checksum should be valid"
+        );
     }
 
     #[test]

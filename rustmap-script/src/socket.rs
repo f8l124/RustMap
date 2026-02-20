@@ -13,11 +13,11 @@ fn is_allowed_address(ip: &std::net::IpAddr) -> bool {
             && !v4.is_private()        // 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
             && !v4.is_link_local()     // 169.254.0.0/16
             && !v4.is_unspecified()    // 0.0.0.0
-            && !v4.is_broadcast()      // 255.255.255.255
+            && !v4.is_broadcast() // 255.255.255.255
         }
         std::net::IpAddr::V6(v6) => {
             !v6.is_loopback()          // ::1
-            && !v6.is_unspecified()    // ::
+            && !v6.is_unspecified() // ::
         }
     }
 }
@@ -86,9 +86,10 @@ impl UserData for LuaSocket {
                     Err(e) => return Ok((false, format!("resolve failed: {e}"))),
                 };
                 if !is_allowed_address(&addr.ip()) {
-                    return Err(mlua::Error::RuntimeError(
-                        format!("connection to {} denied: private/reserved address", addr.ip())
-                    ));
+                    return Err(mlua::Error::RuntimeError(format!(
+                        "connection to {} denied: private/reserved address",
+                        addr.ip()
+                    )));
                 }
                 match TcpStream::connect_timeout(&addr, this.timeout) {
                     Ok(s) => s,
@@ -229,9 +230,10 @@ impl UserData for LuaUdpSocket {
                 Err(e) => return Ok((false, format!("resolve failed: {e}"))),
             };
             if !is_allowed_address(&addr.ip()) {
-                return Err(mlua::Error::RuntimeError(
-                    format!("connection to {} denied: private/reserved address", addr.ip())
-                ));
+                return Err(mlua::Error::RuntimeError(format!(
+                    "connection to {} denied: private/reserved address",
+                    addr.ip()
+                )));
             }
 
             // Bind to an ephemeral port on any local address

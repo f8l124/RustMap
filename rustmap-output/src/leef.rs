@@ -88,9 +88,7 @@ impl OutputFormatter for LeefFormatter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustmap_types::{
-        Host, HostScanResult, HostStatus, Port, PortState, Protocol, ScanType,
-    };
+    use rustmap_types::{Host, HostScanResult, HostStatus, Port, PortState, Protocol, ScanType};
     use std::net::{IpAddr, Ipv4Addr};
     use std::time::Duration;
 
@@ -179,7 +177,11 @@ mod tests {
         // After the header, extensions should be tab-separated
         let parts: Vec<&str> = line.split('\t').collect();
         // At least: header, dst=..., dstPort=..., proto=..., svc=...
-        assert!(parts.len() >= 5, "expected >= 5 tab-separated parts, got {}", parts.len());
+        assert!(
+            parts.len() >= 5,
+            "expected >= 5 tab-separated parts, got {}",
+            parts.len()
+        );
         assert!(parts[1].starts_with("dst="));
         assert!(parts[2].starts_with("dstPort="));
     }

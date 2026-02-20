@@ -1,10 +1,10 @@
 use rustmap_types::Host;
 
-mod error;
 #[cfg(feature = "aws")]
 pub mod aws;
 #[cfg(feature = "azure")]
 pub mod azure;
+mod error;
 #[cfg(feature = "gcp")]
 pub mod gcp;
 
@@ -24,9 +24,7 @@ pub struct CloudDiscoveryOptions {
 }
 
 /// Discover cloud compute assets and return them as scan targets.
-pub async fn discover_cloud_assets(
-    opts: &CloudDiscoveryOptions,
-) -> Result<Vec<Host>, CloudError> {
+pub async fn discover_cloud_assets(opts: &CloudDiscoveryOptions) -> Result<Vec<Host>, CloudError> {
     match opts.provider.as_str() {
         #[cfg(feature = "aws")]
         "aws" => aws::discover(opts).await,

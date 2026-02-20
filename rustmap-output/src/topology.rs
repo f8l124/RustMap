@@ -75,7 +75,10 @@ impl TopologyGraph {
         );
 
         for host_result in &result.hosts {
-            if !matches!(host_result.host_status, HostStatus::Up | HostStatus::Unknown) {
+            if !matches!(
+                host_result.host_status,
+                HostStatus::Up | HostStatus::Unknown
+            ) {
                 continue;
             }
 
@@ -170,13 +173,16 @@ impl TopologyGraph {
                             }
                         }
                         None => {
-                            edge_map.insert(edge_key, TopologyEdge {
-                                from: prev_id.clone(),
-                                to: hop_id.clone(),
-                                ttl: hop.ttl,
-                                rtt_ms,
-                                weight: 1,
-                            });
+                            edge_map.insert(
+                                edge_key,
+                                TopologyEdge {
+                                    from: prev_id.clone(),
+                                    to: hop_id.clone(),
+                                    ttl: hop.ttl,
+                                    rtt_ms,
+                                    weight: 1,
+                                },
+                            );
                         }
                     }
 
@@ -191,13 +197,16 @@ impl TopologyGraph {
                             existing.weight += 1;
                         }
                         None => {
-                            edge_map.insert(edge_key, TopologyEdge {
-                                from: prev_id,
-                                to: target_id,
-                                ttl: 0,
-                                rtt_ms: None,
-                                weight: 1,
-                            });
+                            edge_map.insert(
+                                edge_key,
+                                TopologyEdge {
+                                    from: prev_id,
+                                    to: target_id,
+                                    ttl: 0,
+                                    rtt_ms: None,
+                                    weight: 1,
+                                },
+                            );
                         }
                     }
                 }
@@ -251,8 +260,7 @@ pub fn format_dot(graph: &TopologyGraph) -> String {
                 parts.push(dot_escape(host));
             }
             if !node.open_ports.is_empty() {
-                let port_str: Vec<String> =
-                    node.open_ports.iter().map(|p| p.to_string()).collect();
+                let port_str: Vec<String> = node.open_ports.iter().map(|p| p.to_string()).collect();
                 parts.push(format!("ports: {}", port_str.join(",")));
             }
             if let Some(ref os) = node.os_info {
@@ -300,14 +308,14 @@ pub fn format_dot(graph: &TopologyGraph) -> String {
 
 fn dot_escape(s: &str) -> String {
     s.replace('\\', "\\\\")
-     .replace('"', "\\\"")
-     .replace('\n', "\\n")
-     .replace('\r', "\\r")
-     .replace('{', "\\{")
-     .replace('}', "\\}")
-     .replace('|', "\\|")
-     .replace('<', "\\<")
-     .replace('>', "\\>")
+        .replace('"', "\\\"")
+        .replace('\n', "\\n")
+        .replace('\r', "\\r")
+        .replace('{', "\\{")
+        .replace('}', "\\}")
+        .replace('|', "\\|")
+        .replace('<', "\\<")
+        .replace('>', "\\>")
 }
 
 // ---------------------------------------------------------------------------
@@ -337,12 +345,8 @@ pub fn format_graphml(graph: &TopologyGraph) -> String {
         "  <key id=\"services\" for=\"node\" attr.name=\"services\" attr.type=\"string\"/>\n",
     );
     out.push_str("  <key id=\"ttl\" for=\"edge\" attr.name=\"ttl\" attr.type=\"int\"/>\n");
-    out.push_str(
-        "  <key id=\"rtt_ms\" for=\"edge\" attr.name=\"rtt_ms\" attr.type=\"double\"/>\n",
-    );
-    out.push_str(
-        "  <key id=\"weight\" for=\"edge\" attr.name=\"weight\" attr.type=\"int\"/>\n",
-    );
+    out.push_str("  <key id=\"rtt_ms\" for=\"edge\" attr.name=\"rtt_ms\" attr.type=\"double\"/>\n");
+    out.push_str("  <key id=\"weight\" for=\"edge\" attr.name=\"weight\" attr.type=\"int\"/>\n");
 
     out.push_str("  <graph id=\"topology\" edgedefault=\"directed\">\n");
 
@@ -357,9 +361,7 @@ pub fn format_graphml(graph: &TopologyGraph) -> String {
             NodeType::Target => "target",
             NodeType::Unknown => "unknown",
         };
-        out.push_str(&format!(
-            "      <data key=\"type\">{type_str}</data>\n"
-        ));
+        out.push_str(&format!("      <data key=\"type\">{type_str}</data>\n"));
 
         if let Some(ref ip) = node.ip {
             out.push_str(&format!(
@@ -374,8 +376,7 @@ pub fn format_graphml(graph: &TopologyGraph) -> String {
             ));
         }
         if !node.open_ports.is_empty() {
-            let ports: Vec<String> =
-                node.open_ports.iter().map(|p| p.to_string()).collect();
+            let ports: Vec<String> = node.open_ports.iter().map(|p| p.to_string()).collect();
             out.push_str(&format!(
                 "      <data key=\"open_ports\">{}</data>\n",
                 ports.join(",")
@@ -409,14 +410,9 @@ pub fn format_graphml(graph: &TopologyGraph) -> String {
         out.push_str(&format!(
             "    <edge id=\"e{i}\" source=\"{from}\" target=\"{to}\">\n"
         ));
-        out.push_str(&format!(
-            "      <data key=\"ttl\">{}</data>\n",
-            edge.ttl
-        ));
+        out.push_str(&format!("      <data key=\"ttl\">{}</data>\n", edge.ttl));
         if let Some(rtt) = edge.rtt_ms {
-            out.push_str(&format!(
-                "      <data key=\"rtt_ms\">{rtt:.2}</data>\n"
-            ));
+            out.push_str(&format!("      <data key=\"rtt_ms\">{rtt:.2}</data>\n"));
         }
         out.push_str(&format!(
             "      <data key=\"weight\">{}</data>\n",
@@ -640,11 +636,7 @@ mod tests {
         assert_eq!(graph.nodes.len(), 4);
 
         // The shared router node should appear once
-        let router_count = graph
-            .nodes
-            .iter()
-            .filter(|n| n.id == "192.168.1.1")
-            .count();
+        let router_count = graph.nodes.iter().filter(|n| n.id == "192.168.1.1").count();
         assert_eq!(router_count, 1);
 
         // scanner→192.168.1.1 edge should have weight=2 (merged from two traceroutes)

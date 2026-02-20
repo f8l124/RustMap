@@ -129,13 +129,9 @@ pub async fn start_scan(
                     // Save to persistent database
                     {
                         let store = state_clone.store.lock().await;
-                        if let Err(e) = store.save_scan(
-                            &scan_id,
-                            &result,
-                            started_at,
-                            finished_at,
-                            None,
-                        ) {
+                        if let Err(e) =
+                            store.save_scan(&scan_id, &result, started_at, finished_at, None)
+                        {
                             eprintln!("warning: failed to save scan to database: {e}");
                         }
                     }
@@ -178,10 +174,7 @@ pub async fn start_scan(
 }
 
 #[tauri::command]
-pub async fn stop_scan(
-    state: State<'_, Arc<ScanState>>,
-    scan_id: String,
-) -> Result<(), String> {
+pub async fn stop_scan(state: State<'_, Arc<ScanState>>, scan_id: String) -> Result<(), String> {
     let running = state.running.lock().await;
     if let Some(cancel) = running.get(&scan_id) {
         cancel.cancel();
@@ -263,11 +256,9 @@ pub fn check_privileges_cmd() -> PrivilegeInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rustmap_types::{Host, HostScanResult, Port, PortState, ScanResult, ScanType};
     use std::net::IpAddr;
     use std::time::Duration;
-    use rustmap_types::{
-        Host, HostScanResult, Port, PortState, ScanResult, ScanType,
-    };
 
     fn mock_scan_result() -> ScanResult {
         ScanResult {
@@ -337,7 +328,10 @@ mod tests {
         let result = mock_scan_result();
         let output = format_scan_result(&result, "xml").unwrap();
         assert!(output.contains("<nmaprun"), "XML should contain <nmaprun");
-        assert!(output.contains("</nmaprun>"), "XML should contain </nmaprun>");
+        assert!(
+            output.contains("</nmaprun>"),
+            "XML should contain </nmaprun>"
+        );
         assert!(output.contains("192.168.1.1"), "XML should contain host IP");
     }
 
@@ -345,15 +339,24 @@ mod tests {
     fn format_normal_contains_host() {
         let result = mock_scan_result();
         let output = format_scan_result(&result, "normal").unwrap();
-        assert!(output.contains("192.168.1.1"), "normal output should contain host IP");
-        assert!(output.contains("80"), "normal output should contain port number");
+        assert!(
+            output.contains("192.168.1.1"),
+            "normal output should contain host IP"
+        );
+        assert!(
+            output.contains("80"),
+            "normal output should contain port number"
+        );
     }
 
     #[test]
     fn format_grepable_contains_host() {
         let result = mock_scan_result();
         let output = format_scan_result(&result, "grepable").unwrap();
-        assert!(output.contains("Host:"), "grepable should contain Host: line");
+        assert!(
+            output.contains("Host:"),
+            "grepable should contain Host: line"
+        );
         assert!(output.contains("192.168.1.1"), "grepable should contain IP");
     }
 

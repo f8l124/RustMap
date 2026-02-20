@@ -46,9 +46,11 @@ impl SourcePortAllocator {
             } else {
                 current + 1
             };
-            if self.counter.compare_exchange_weak(
-                current, next, Ordering::Relaxed, Ordering::Relaxed,
-            ).is_ok() {
+            if self
+                .counter
+                .compare_exchange_weak(current, next, Ordering::Relaxed, Ordering::Relaxed)
+                .is_ok()
+            {
                 return PORT_MIN + current;
             }
         }
@@ -70,7 +72,10 @@ mod tests {
         let alloc = SourcePortAllocator::new();
         for _ in 0..100 {
             let port = alloc.next_port();
-            assert!((PORT_MIN..=PORT_MAX).contains(&port), "port {port} out of range");
+            assert!(
+                (PORT_MIN..=PORT_MAX).contains(&port),
+                "port {port} out of range"
+            );
         }
     }
 

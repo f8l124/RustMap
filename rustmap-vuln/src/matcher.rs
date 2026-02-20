@@ -89,7 +89,13 @@ fn match_port_vulns(
                     && rule.version_start.is_none()
                     && rule.version_end.is_none()
             }
-            Some(ver) => version_matches(ver, &rule.version_exact, &rule.version_start, &rule.version_end, rule.version_end_exclusive),
+            Some(ver) => version_matches(
+                ver,
+                &rule.version_exact,
+                &rule.version_start,
+                &rule.version_end,
+                rule.version_end_exclusive,
+            ),
         };
 
         if !version_ok {
@@ -217,7 +223,11 @@ pub fn compare_versions(a: &str, b: &str) -> std::cmp::Ordering {
     for seg in remaining {
         let ord = compare_segments(seg, "0");
         if ord != std::cmp::Ordering::Equal {
-            return if seg_a.len() > seg_b.len() { ord } else { ord.reverse() };
+            return if seg_a.len() > seg_b.len() {
+                ord
+            } else {
+                ord.reverse()
+            };
         }
     }
 
@@ -226,9 +236,7 @@ pub fn compare_versions(a: &str, b: &str) -> std::cmp::Ordering {
 
 /// Split a version string into segments.
 fn split_version(v: &str) -> Vec<&str> {
-    v.split(['.', '-', '_'])
-        .filter(|s| !s.is_empty())
-        .collect()
+    v.split(['.', '-', '_']).filter(|s| !s.is_empty()).collect()
 }
 
 /// Compare two version segments (numeric or lexicographic).
@@ -303,10 +311,19 @@ mod tests {
 
     #[test]
     fn compare_versions_multi_segment() {
-        assert_eq!(compare_versions("1.2.3", "1.2.3"), std::cmp::Ordering::Equal);
+        assert_eq!(
+            compare_versions("1.2.3", "1.2.3"),
+            std::cmp::Ordering::Equal
+        );
         assert_eq!(compare_versions("1.2.3", "1.2.4"), std::cmp::Ordering::Less);
-        assert_eq!(compare_versions("1.3.0", "1.2.9"), std::cmp::Ordering::Greater);
-        assert_eq!(compare_versions("2.0.0", "1.9.9"), std::cmp::Ordering::Greater);
+        assert_eq!(
+            compare_versions("1.3.0", "1.2.9"),
+            std::cmp::Ordering::Greater
+        );
+        assert_eq!(
+            compare_versions("2.0.0", "1.9.9"),
+            std::cmp::Ordering::Greater
+        );
     }
 
     #[test]
@@ -314,21 +331,42 @@ mod tests {
         // Trailing .0 segments should not affect ordering
         assert_eq!(compare_versions("1.2", "1.2.0"), std::cmp::Ordering::Equal);
         assert_eq!(compare_versions("1.2.0", "1.2"), std::cmp::Ordering::Equal);
-        assert_eq!(compare_versions("1.2.0.0", "1.2"), std::cmp::Ordering::Equal);
+        assert_eq!(
+            compare_versions("1.2.0.0", "1.2"),
+            std::cmp::Ordering::Equal
+        );
         // But non-zero trailing segments still matter
         assert_eq!(compare_versions("1.2", "1.2.1"), std::cmp::Ordering::Less);
-        assert_eq!(compare_versions("1.2.1", "1.2"), std::cmp::Ordering::Greater);
+        assert_eq!(
+            compare_versions("1.2.1", "1.2"),
+            std::cmp::Ordering::Greater
+        );
     }
 
     #[test]
     fn compare_versions_with_suffix() {
-        assert_eq!(compare_versions("1.0.0p1", "1.0.0p2"), std::cmp::Ordering::Less);
+        assert_eq!(
+            compare_versions("1.0.0p1", "1.0.0p2"),
+            std::cmp::Ordering::Less
+        );
     }
 
     #[test]
     fn version_matches_exact() {
-        assert!(version_matches("8.9p1", &Some("8.9p1".into()), &None, &None, false));
-        assert!(!version_matches("8.9p2", &Some("8.9p1".into()), &None, &None, false));
+        assert!(version_matches(
+            "8.9p1",
+            &Some("8.9p1".into()),
+            &None,
+            &None,
+            false
+        ));
+        assert!(!version_matches(
+            "8.9p2",
+            &Some("8.9p1".into()),
+            &None,
+            &None,
+            false
+        ));
     }
 
     #[test]
@@ -440,13 +478,7 @@ mod tests {
             )
             .unwrap();
         store
-            .insert_cve_rule(
-                "CVE-2024-0001",
-                "openssh",
-                None,
-                Some("8.5"),
-                Some("9.7"),
-            )
+            .insert_cve_rule("CVE-2024-0001", "openssh", None, Some("8.5"), Some("9.7"))
             .unwrap();
 
         let vulns = match_port_vulns(&store, "OpenSSH", Some("8.9"), None);
@@ -517,7 +549,10 @@ mod tests {
         };
         let score = compute_risk_score(&host);
         assert!(score <= 10.0, "expected score <= 10.0, got {score}");
-        assert!(score >= 9.0, "expected score >= 9.0 for many criticals, got {score}");
+        assert!(
+            score >= 9.0,
+            "expected score >= 9.0 for many criticals, got {score}"
+        );
     }
 
     #[test]

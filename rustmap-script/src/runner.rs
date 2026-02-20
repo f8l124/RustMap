@@ -1,4 +1,4 @@
-use rustmap_types::{ScriptConfig, ScriptPhase, ScriptResult, ScanResult};
+use rustmap_types::{ScanResult, ScriptConfig, ScriptPhase, ScriptResult};
 
 use crate::discovery::{ScriptLanguage, ScriptMeta};
 use crate::error::ScriptError;
@@ -36,15 +36,14 @@ fn extract_script_result(
             elements: None,
         }),
         mlua::Value::Table(_) => {
-            let output = if let Ok(tostring) =
-                sandbox.lua().globals().get::<mlua::Function>("tostring")
-            {
-                tostring
-                    .call::<String>(action_result.clone())
-                    .unwrap_or_default()
-            } else {
-                String::new()
-            };
+            let output =
+                if let Ok(tostring) = sandbox.lua().globals().get::<mlua::Function>("tostring") {
+                    tostring
+                        .call::<String>(action_result.clone())
+                        .unwrap_or_default()
+                } else {
+                    String::new()
+                };
             let elements = lua_value_to_script_value(action_result);
             Some(ScriptResult {
                 id: script_id.to_string(),
@@ -139,7 +138,9 @@ impl ScriptRunner {
             ScriptLanguage::Wasm => {
                 let wasm_bytes = std::fs::read(&script.path)?;
                 let mut sandbox = crate::wasm_sandbox::WasmSandbox::new(&wasm_bytes)?;
-                let args_map: std::collections::HashMap<&str, &str> = self.config.script_args
+                let args_map: std::collections::HashMap<&str, &str> = self
+                    .config
+                    .script_args
                     .iter()
                     .map(|(k, v)| (k.as_str(), v.as_str()))
                     .collect();
@@ -176,7 +177,8 @@ impl ScriptRunner {
         let port_table = lua_api::build_port_table(sandbox.lua(), port)
             .map_err(|e| ScriptError::Lua(format!("failed to build port table: {e}")))?;
 
-        if !check_rule(sandbox.call_function("portrule", (host_table.clone(), port_table.clone())))? {
+        if !check_rule(sandbox.call_function("portrule", (host_table.clone(), port_table.clone())))?
+        {
             return Ok(None);
         }
 
@@ -232,7 +234,10 @@ impl ScriptRunner {
                     }
                     Ok(None) => {}
                     Err(e) => {
-                        eprintln!("NSE: script {} failed on {}: {}", script.id, host.host.ip, e);
+                        eprintln!(
+                            "NSE: script {} failed on {}: {}",
+                            script.id, host.host.ip, e
+                        );
                     }
                 }
             }
@@ -332,7 +337,9 @@ impl ScriptRunner {
             ScriptLanguage::Wasm => {
                 let wasm_bytes = std::fs::read(&script.path)?;
                 let mut sandbox = crate::wasm_sandbox::WasmSandbox::new(&wasm_bytes)?;
-                let args_map: std::collections::HashMap<&str, &str> = self.config.script_args
+                let args_map: std::collections::HashMap<&str, &str> = self
+                    .config
+                    .script_args
                     .iter()
                     .map(|(k, v)| (k.as_str(), v.as_str()))
                     .collect();
@@ -372,7 +379,9 @@ impl ScriptRunner {
             ScriptLanguage::Python => {
                 // For prerule/postrule, create a minimal empty host
                 let empty_host = rustmap_types::HostScanResult {
-                    host: rustmap_types::Host::new(std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED)),
+                    host: rustmap_types::Host::new(std::net::IpAddr::V4(
+                        std::net::Ipv4Addr::UNSPECIFIED,
+                    )),
                     ports: vec![],
                     scan_duration: std::time::Duration::ZERO,
                     host_status: rustmap_types::HostStatus::Unknown,
@@ -400,7 +409,9 @@ impl ScriptRunner {
             ScriptLanguage::Wasm => {
                 let wasm_bytes = std::fs::read(&script.path)?;
                 let mut sandbox = crate::wasm_sandbox::WasmSandbox::new(&wasm_bytes)?;
-                let args_map: std::collections::HashMap<&str, &str> = self.config.script_args
+                let args_map: std::collections::HashMap<&str, &str> = self
+                    .config
+                    .script_args
                     .iter()
                     .map(|(k, v)| (k.as_str(), v.as_str()))
                     .collect();

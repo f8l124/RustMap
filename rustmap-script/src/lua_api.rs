@@ -51,9 +51,7 @@ pub fn register_nmap_api(lua: &Lua, proxy: Option<ProxyConfig>) -> Result<(), Sc
     // nmap.new_socket() -> LuaSocket userdata (TCP)
     let new_socket_fn = lua
         .create_function(|lua, ()| {
-            let proxy = lua
-                .app_data_ref::<ProxyAppData>()
-                .and_then(|p| p.0.clone());
+            let proxy = lua.app_data_ref::<ProxyAppData>().and_then(|p| p.0.clone());
             lua.create_userdata(LuaSocket::new(proxy))
         })
         .map_err(|e| ScriptError::Lua(format!("failed to create new_socket fn: {e}")))?;
@@ -199,10 +197,7 @@ pub fn register_all(lua: &Lua) -> Result<(), ScriptError> {
 }
 
 /// Register all API functions with optional proxy config for socket connections.
-pub fn register_all_with_proxy(
-    lua: &Lua,
-    proxy: Option<ProxyConfig>,
-) -> Result<(), ScriptError> {
+pub fn register_all_with_proxy(lua: &Lua, proxy: Option<ProxyConfig>) -> Result<(), ScriptError> {
     register_nmap_api(lua, proxy)?;
     register_shortport_api(lua)?;
     Ok(())
@@ -273,9 +268,7 @@ mod tests {
         sandbox
             .execute(r#"nmap.registry["test"] = "hello""#)
             .unwrap();
-        let result = sandbox
-            .execute(r#"return nmap.registry["test"]"#)
-            .unwrap();
+        let result = sandbox.execute(r#"return nmap.registry["test"]"#).unwrap();
         assert_eq!(result.as_str().unwrap(), "hello");
     }
 
@@ -435,9 +428,7 @@ mod tests {
     #[test]
     fn nmap_new_socket_creates_userdata() {
         let sandbox = make_sandbox_with_api();
-        let result = sandbox
-            .execute("return type(nmap.new_socket())")
-            .unwrap();
+        let result = sandbox.execute("return type(nmap.new_socket())").unwrap();
         assert_eq!(result.as_str().unwrap(), "userdata");
     }
 
@@ -487,10 +478,7 @@ mod tests {
         let sandbox = make_sandbox_with_api();
         // MD5("test") = 098f6bcd4621d373cade4e832627b4f6
         let result = sandbox.execute(r#"return nmap.md5("test")"#).unwrap();
-        assert_eq!(
-            result.as_str().unwrap(),
-            "098f6bcd4621d373cade4e832627b4f6"
-        );
+        assert_eq!(result.as_str().unwrap(), "098f6bcd4621d373cade4e832627b4f6");
     }
 
     #[test]
@@ -498,10 +486,7 @@ mod tests {
         let sandbox = make_sandbox_with_api();
         // MD5("") = d41d8cd98f00b204e9800998ecf8427e
         let result = sandbox.execute(r#"return nmap.md5("")"#).unwrap();
-        assert_eq!(
-            result.as_str().unwrap(),
-            "d41d8cd98f00b204e9800998ecf8427e"
-        );
+        assert_eq!(result.as_str().unwrap(), "d41d8cd98f00b204e9800998ecf8427e");
     }
 
     #[test]

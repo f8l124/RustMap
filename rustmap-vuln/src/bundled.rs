@@ -271,12 +271,7 @@ fn cve(
 }
 
 // Helper: build a CveRule.
-fn rule(
-    product: &str,
-    exact: Option<&str>,
-    start: Option<&str>,
-    end: Option<&str>,
-) -> CveRule {
+fn rule(product: &str, exact: Option<&str>, start: Option<&str>, end: Option<&str>) -> CveRule {
     CveRule {
         cve_id: String::new(), // filled by bulk_import
         product_pattern: product.to_string(),
@@ -305,8 +300,16 @@ mod tests {
                 "invalid CVE ID: {}",
                 entry.cve_id
             );
-            assert!(!entry.description.is_empty(), "empty description for {}", entry.cve_id);
-            assert!(entry.cvss_score.is_some(), "missing CVSS for {}", entry.cve_id);
+            assert!(
+                !entry.description.is_empty(),
+                "empty description for {}",
+                entry.cve_id
+            );
+            assert!(
+                entry.cvss_score.is_some(),
+                "missing CVSS for {}",
+                entry.cve_id
+            );
             assert!(!rules.is_empty(), "no rules for {}", entry.cve_id);
         }
     }

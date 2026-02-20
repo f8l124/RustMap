@@ -1,6 +1,4 @@
-use rustmap_types::{
-    DetectionMethod, HostStatus, PortState, Protocol, ScanType, TimingTemplate,
-};
+use rustmap_types::{DetectionMethod, HostStatus, PortState, Protocol, ScanType, TimingTemplate};
 
 pub fn scan_type_from_str(s: &str) -> Result<ScanType, String> {
     match s.to_lowercase().as_str() {
@@ -140,7 +138,10 @@ mod tests {
         assert_eq!(port_state_to_str(PortState::Filtered), "filtered");
         assert_eq!(port_state_to_str(PortState::Unfiltered), "unfiltered");
         assert_eq!(port_state_to_str(PortState::OpenFiltered), "open|filtered");
-        assert_eq!(port_state_to_str(PortState::ClosedFiltered), "closed|filtered");
+        assert_eq!(
+            port_state_to_str(PortState::ClosedFiltered),
+            "closed|filtered"
+        );
     }
 
     #[test]
@@ -149,6 +150,9 @@ mod tests {
         assert_eq!(detection_method_to_str(DetectionMethod::PortBased), "table");
         assert_eq!(detection_method_to_str(DetectionMethod::Banner), "banner");
         assert_eq!(detection_method_to_str(DetectionMethod::Probe), "probe");
-        assert_eq!(detection_method_to_str(DetectionMethod::TlsProbe), "tls-probe");
+        assert_eq!(
+            detection_method_to_str(DetectionMethod::TlsProbe),
+            "tls-probe"
+        );
     }
 }

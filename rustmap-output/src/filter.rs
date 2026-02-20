@@ -15,9 +15,7 @@ pub fn filter_open_ports(result: &ScanResult) -> ScanResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustmap_types::{
-        Host, HostScanResult, HostStatus, Port, PortState, Protocol, ScanType,
-    };
+    use rustmap_types::{Host, HostScanResult, HostStatus, Port, PortState, Protocol, ScanType};
     use std::net::{IpAddr, Ipv4Addr};
     use std::time::Duration;
 
@@ -72,7 +70,12 @@ mod tests {
 
         let filtered = filter_open_ports(&result);
         assert_eq!(filtered.hosts[0].ports.len(), 2);
-        assert!(filtered.hosts[0].ports.iter().all(|p| p.state == PortState::Open));
+        assert!(
+            filtered.hosts[0]
+                .ports
+                .iter()
+                .all(|p| p.state == PortState::Open)
+        );
         assert_eq!(filtered.hosts[0].ports[0].number, 22);
         assert_eq!(filtered.hosts[0].ports[1].number, 443);
     }

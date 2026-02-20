@@ -145,8 +145,15 @@ mod tests {
     fn http2_probe_payload_format() {
         let db = ProbeDatabase::new();
         let probes = db.get_probes(80, 5);
-        let h2_probe = probes.iter().find(|p| p.name == "HTTP2PriorKnowledge").unwrap();
+        let h2_probe = probes
+            .iter()
+            .find(|p| p.name == "HTTP2PriorKnowledge")
+            .unwrap();
         // Should start with PRI preface
-        assert!(h2_probe.payload.starts_with(b"PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"));
+        assert!(
+            h2_probe
+                .payload
+                .starts_with(b"PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n")
+        );
     }
 }

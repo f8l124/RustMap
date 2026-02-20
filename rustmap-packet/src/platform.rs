@@ -41,14 +41,11 @@ pub fn create_capture(config: CaptureConfig) -> Result<AsyncCapture, PacketError
 fn get_local_ip(target: IpAddr) -> Result<IpAddr, PacketError> {
     // Connect a UDP socket to determine the outbound IP
     // (no actual traffic is sent — just routing lookup)
-    let socket = std::net::UdpSocket::bind("0.0.0.0:0")
-        .map_err(|e| PacketError::NoInterface)?;
+    let socket = std::net::UdpSocket::bind("0.0.0.0:0").map_err(|_e| PacketError::NoInterface)?;
     let target_addr = std::net::SocketAddr::new(target, 80);
     socket
         .connect(target_addr)
-        .map_err(|e| PacketError::NoInterface)?;
-    let local_addr = socket
-        .local_addr()
-        .map_err(|e| PacketError::NoInterface)?;
+        .map_err(|_e| PacketError::NoInterface)?;
+    let local_addr = socket.local_addr().map_err(|_e| PacketError::NoInterface)?;
     Ok(local_addr.ip())
 }

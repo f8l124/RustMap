@@ -1,4 +1,6 @@
-use rustmap_types::{DetectionMethod, HostStatus, PortState, ScanResult, ScanType, ScriptResult, ScriptValue};
+use rustmap_types::{
+    DetectionMethod, HostStatus, PortState, ScanResult, ScanType, ScriptResult, ScriptValue,
+};
 use std::fmt::Write;
 
 use crate::traits::{OutputError, OutputFormatter};
@@ -13,10 +15,7 @@ impl OutputFormatter for XmlFormatter {
         out.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
 
         // <nmaprun> root element
-        let args = result
-            .command_args
-            .as_deref()
-            .unwrap_or("rustmap");
+        let args = result.command_args.as_deref().unwrap_or("rustmap");
         let (start_unix, start_str) = format_start_time(result);
         writeln!(
             out,
@@ -243,9 +242,10 @@ impl OutputFormatter for XmlFormatter {
                     )
                     .unwrap();
 
-                    let reason = port.reason.as_deref().unwrap_or_else(|| {
-                        derive_reason(result.scan_type, port.state)
-                    });
+                    let reason = port
+                        .reason
+                        .as_deref()
+                        .unwrap_or_else(|| derive_reason(result.scan_type, port.state));
                     writeln!(
                         out,
                         "<state state=\"{}\" reason=\"{}\"/>",
@@ -291,10 +291,8 @@ impl OutputFormatter for XmlFormatter {
                             0x0301 => "1.0",
                             _ => "unknown",
                         };
-                        let mut attrs = format!(
-                            "version=\"{}\" cipher=\"{:04x}\"",
-                            ver, tls.cipher_suite,
-                        );
+                        let mut attrs =
+                            format!("version=\"{}\" cipher=\"{:04x}\"", ver, tls.cipher_suite,);
                         if let Some(ref alpn) = tls.alpn {
                             write!(attrs, " alpn=\"{}\"", xml_escape(alpn)).unwrap();
                         }
@@ -311,7 +309,11 @@ impl OutputFormatter for XmlFormatter {
                                 let iss = cert.issuer_cn.as_deref().unwrap_or("");
                                 let exp = cert.not_after.as_deref().unwrap_or("");
                                 let pos = cert.chain_position;
-                                let ss = if cert.self_signed { " self-signed=\"true\"" } else { "" };
+                                let ss = if cert.self_signed {
+                                    " self-signed=\"true\""
+                                } else {
+                                    ""
+                                };
                                 writeln!(
                                     out,
                                     "<certificate subject=\"{}\" issuer=\"{}\" expires=\"{}\" position=\"{}\"{ss}/>",
@@ -365,10 +367,7 @@ impl OutputFormatter for XmlFormatter {
                 )
                 .unwrap();
 
-                let osgen = os_fp
-                    .os_generation
-                    .as_deref()
-                    .unwrap_or("");
+                let osgen = os_fp.os_generation.as_deref().unwrap_or("");
                 writeln!(
                     out,
                     "<osclass osfamily=\"{}\" osgen=\"{}\" accuracy=\"{}\"/>",
@@ -394,7 +393,15 @@ impl OutputFormatter for XmlFormatter {
 
             // Risk score
             if let Some(risk) = host_result.risk_score {
-                let sev = if risk >= 9.0 { "critical" } else if risk >= 7.0 { "high" } else if risk >= 4.0 { "medium" } else { "low" };
+                let sev = if risk >= 9.0 {
+                    "critical"
+                } else if risk >= 7.0 {
+                    "high"
+                } else if risk >= 4.0 {
+                    "medium"
+                } else {
+                    "low"
+                };
                 writeln!(out, "<risk score=\"{risk:.1}\" severity=\"{sev}\"/>").unwrap();
             }
 
@@ -453,8 +460,13 @@ impl OutputFormatter for XmlFormatter {
                 sorted.sort_by(|a, b| b.1.cmp(&a.1));
                 out.push_str("<services>\n");
                 for (svc, count) in &sorted {
-                    writeln!(out, "<service name=\"{}\" count=\"{}\"/>", xml_escape(svc), count)
-                        .unwrap();
+                    writeln!(
+                        out,
+                        "<service name=\"{}\" count=\"{}\"/>",
+                        xml_escape(svc),
+                        count
+                    )
+                    .unwrap();
                 }
                 out.push_str("</services>\n");
             }
@@ -530,10 +542,14 @@ fn derive_reason(scan_type: ScanType, state: PortState) -> &'static str {
         (ScanType::TcpConnect, PortState::Open) => "syn-ack",
         (ScanType::TcpConnect, PortState::Closed) => "conn-refused",
         // FIN/NULL/Xmas/Maimon scans
-        (ScanType::TcpFin | ScanType::TcpNull | ScanType::TcpXmas | ScanType::TcpMaimon,
-         PortState::Closed) => "rst",
-        (ScanType::TcpFin | ScanType::TcpNull | ScanType::TcpXmas | ScanType::TcpMaimon,
-         PortState::OpenFiltered) => "no-response",
+        (
+            ScanType::TcpFin | ScanType::TcpNull | ScanType::TcpXmas | ScanType::TcpMaimon,
+            PortState::Closed,
+        ) => "rst",
+        (
+            ScanType::TcpFin | ScanType::TcpNull | ScanType::TcpXmas | ScanType::TcpMaimon,
+            PortState::OpenFiltered,
+        ) => "no-response",
         // ACK scan
         (ScanType::TcpAck, PortState::Unfiltered) => "rst",
         // Window scan
@@ -590,8 +606,7 @@ fn format_unix_timestamp(secs: u64) -> String {
     let (year, month, day) = days_to_ymd(days);
 
     let month_names = [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
     ];
     let day_names = ["Thu", "Fri", "Sat", "Sun", "Mon", "Tue", "Wed"]; // 1970-01-01 was Thursday
     let weekday = (days % 7) as usize;
@@ -685,7 +700,13 @@ fn format_script_value_xml(out: &mut String, value: &ScriptValue, key: Option<&s
     match value {
         ScriptValue::String(s) => {
             if let Some(k) = key {
-                writeln!(out, "<elem key=\"{}\">{}</elem>", xml_escape(k), xml_escape(s)).unwrap();
+                writeln!(
+                    out,
+                    "<elem key=\"{}\">{}</elem>",
+                    xml_escape(k),
+                    xml_escape(s)
+                )
+                .unwrap();
             } else {
                 writeln!(out, "<elem>{}</elem>", xml_escape(s)).unwrap();
             }
@@ -941,9 +962,7 @@ mod tests {
 
     #[test]
     fn xml_extraports_for_many_closed() {
-        let mut ports: Vec<Port> = (1..=15)
-            .map(|n| make_port(n, PortState::Closed))
-            .collect();
+        let mut ports: Vec<Port> = (1..=15).map(|n| make_port(n, PortState::Closed)).collect();
         ports.push(Port {
             number: 80,
             protocol: Protocol::Tcp,
@@ -1079,7 +1098,10 @@ mod tests {
         }]);
 
         let output = XmlFormatter.format(&result).unwrap();
-        assert!(output.contains("<hostnames><hostname name=\"example.com\" type=\"user\"/></hostnames>"));
+        assert!(
+            output
+                .contains("<hostnames><hostname name=\"example.com\" type=\"user\"/></hostnames>")
+        );
     }
 
     #[test]
@@ -1275,9 +1297,10 @@ mod tests {
                 script_results: vec![ScriptResult {
                     id: "http-title".into(),
                     output: "Title: Example".into(),
-                    elements: Some(ScriptValue::Map(vec![
-                        ("title".into(), ScriptValue::String("Example".into())),
-                    ])),
+                    elements: Some(ScriptValue::Map(vec![(
+                        "title".into(),
+                        ScriptValue::String("Example".into()),
+                    )])),
                 }],
                 tls_info: None,
             }],

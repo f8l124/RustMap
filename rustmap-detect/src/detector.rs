@@ -4,13 +4,13 @@ use std::sync::Arc;
 use tokio::sync::Semaphore;
 use tracing::{debug, info};
 
+use crate::DetectionError;
 use crate::banner::BannerGrabber;
 use crate::modern_probes::{probe_quic_detailed, probe_tls_for_service};
 use crate::patterns_db::PatternDatabase;
 use crate::port_map::PortServiceMap;
 use crate::probes_db::ProbeDatabase;
 use crate::tls_fingerprint::is_tls_port;
-use crate::DetectionError;
 use rustmap_types::{
     DetectionMethod, Port, PortState, ProxyConfig, ServiceDetectionConfig, ServiceInfo,
     TlsServerFingerprint,
@@ -127,10 +127,7 @@ impl ServiceDetector {
                     ports[idx].tls_info = tls_fp;
                 }
                 Ok((idx, Ok(None))) => {
-                    debug!(
-                        "no service detected on {}:{}",
-                        host_ip, ports[idx].number
-                    );
+                    debug!("no service detected on {}:{}", host_ip, ports[idx].number);
                 }
                 Ok((idx, Err(e))) => {
                     debug!(
@@ -238,14 +235,23 @@ async fn detect_single_port(
                 }
                 debug!(
                     "probe '{}' on {}:{} got {} bytes but no pattern matched",
-                    probe.name, host_ip, port, response.len()
+                    probe.name,
+                    host_ip,
+                    port,
+                    response.len()
                 );
             }
             Ok(None) => {
-                debug!("probe '{}' on {}:{} got no response", probe.name, host_ip, port);
+                debug!(
+                    "probe '{}' on {}:{} got no response",
+                    probe.name, host_ip, port
+                );
             }
             Err(e) => {
-                debug!("probe '{}' on {}:{} failed: {}", probe.name, host_ip, port, e);
+                debug!(
+                    "probe '{}' on {}:{} failed: {}",
+                    probe.name, host_ip, port, e
+                );
             }
         }
     }
@@ -376,7 +382,14 @@ mod tests {
         }];
 
         detector
-            .detect_services(IpAddr::V4(Ipv4Addr::LOCALHOST), None, &mut ports, &config, 10, None)
+            .detect_services(
+                IpAddr::V4(Ipv4Addr::LOCALHOST),
+                None,
+                &mut ports,
+                &config,
+                10,
+                None,
+            )
             .await
             .unwrap();
 
@@ -394,10 +407,7 @@ mod tests {
 
         tokio::spawn(async move {
             let (mut stream, _) = listener.accept().await.unwrap();
-            stream
-                .write_all(b"220 (vsFTPd 3.0.5)\r\n")
-                .await
-                .unwrap();
+            stream.write_all(b"220 (vsFTPd 3.0.5)\r\n").await.unwrap();
         });
 
         let detector = ServiceDetector::new();
@@ -419,7 +429,14 @@ mod tests {
         }];
 
         detector
-            .detect_services(IpAddr::V4(Ipv4Addr::LOCALHOST), None, &mut ports, &config, 10, None)
+            .detect_services(
+                IpAddr::V4(Ipv4Addr::LOCALHOST),
+                None,
+                &mut ports,
+                &config,
+                10,
+                None,
+            )
             .await
             .unwrap();
 
@@ -441,7 +458,14 @@ mod tests {
         let mut ports = vec![make_port(80, PortState::Closed)];
 
         detector
-            .detect_services(IpAddr::V4(Ipv4Addr::LOCALHOST), None, &mut ports, &config, 10, None)
+            .detect_services(
+                IpAddr::V4(Ipv4Addr::LOCALHOST),
+                None,
+                &mut ports,
+                &config,
+                10,
+                None,
+            )
             .await
             .unwrap();
 
@@ -478,7 +502,14 @@ mod tests {
         }];
 
         detector
-            .detect_services(IpAddr::V4(Ipv4Addr::LOCALHOST), None, &mut ports, &config, 10, None)
+            .detect_services(
+                IpAddr::V4(Ipv4Addr::LOCALHOST),
+                None,
+                &mut ports,
+                &config,
+                10,
+                None,
+            )
             .await
             .unwrap();
 
@@ -502,9 +533,7 @@ mod tests {
                 match stream.read(&mut buf).await {
                     Ok(n) if n > 0 => {
                         stream
-                            .write_all(
-                                b"HTTP/1.1 200 OK\r\nServer: Apache/2.4.52 (Ubuntu)\r\n\r\n",
-                            )
+                            .write_all(b"HTTP/1.1 200 OK\r\nServer: Apache/2.4.52 (Ubuntu)\r\n\r\n")
                             .await
                             .unwrap();
                         break;
@@ -534,7 +563,14 @@ mod tests {
         }];
 
         detector
-            .detect_services(IpAddr::V4(Ipv4Addr::LOCALHOST), None, &mut ports, &config, 10, None)
+            .detect_services(
+                IpAddr::V4(Ipv4Addr::LOCALHOST),
+                None,
+                &mut ports,
+                &config,
+                10,
+                None,
+            )
             .await
             .unwrap();
 
@@ -558,18 +594,12 @@ mod tests {
 
         tokio::spawn(async move {
             let (mut stream, _) = ssh_listener.accept().await.unwrap();
-            stream
-                .write_all(b"SSH-2.0-OpenSSH_9.0\r\n")
-                .await
-                .unwrap();
+            stream.write_all(b"SSH-2.0-OpenSSH_9.0\r\n").await.unwrap();
         });
 
         tokio::spawn(async move {
             let (mut stream, _) = ftp_listener.accept().await.unwrap();
-            stream
-                .write_all(b"220 (vsFTPd 3.0.5)\r\n")
-                .await
-                .unwrap();
+            stream.write_all(b"220 (vsFTPd 3.0.5)\r\n").await.unwrap();
         });
 
         let detector = ServiceDetector::new();
@@ -604,7 +634,14 @@ mod tests {
         ];
 
         detector
-            .detect_services(IpAddr::V4(Ipv4Addr::LOCALHOST), None, &mut ports, &config, 10, None)
+            .detect_services(
+                IpAddr::V4(Ipv4Addr::LOCALHOST),
+                None,
+                &mut ports,
+                &config,
+                10,
+                None,
+            )
             .await
             .unwrap();
 
@@ -655,7 +692,14 @@ mod tests {
         }];
 
         detector
-            .detect_services(IpAddr::V4(Ipv4Addr::LOCALHOST), None, &mut ports, &config, 10, None)
+            .detect_services(
+                IpAddr::V4(Ipv4Addr::LOCALHOST),
+                None,
+                &mut ports,
+                &config,
+                10,
+                None,
+            )
             .await
             .unwrap();
 

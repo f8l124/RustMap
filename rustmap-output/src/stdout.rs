@@ -7,7 +7,13 @@ use crate::traits::{OutputError, OutputFormatter};
 /// Strip terminal control characters from untrusted data to prevent escape injection.
 fn sanitize_terminal(s: &str) -> String {
     s.chars()
-        .map(|c| if c.is_control() && c != '\n' && c != '\t' { '?' } else { c })
+        .map(|c| {
+            if c.is_control() && c != '\n' && c != '\t' {
+                '?'
+            } else {
+                c
+            }
+        })
         .collect()
 }
 
@@ -159,10 +165,7 @@ impl OutputFormatter for StdoutFormatter {
             }
 
             // Check if any port has version info (service_info)
-            let has_version_info = host_result
-                .ports
-                .iter()
-                .any(|p| p.service_info.is_some());
+            let has_version_info = host_result.ports.iter().any(|p| p.service_info.is_some());
 
             // Build header based on what columns we need
             let show_reason = self.show_reason;
@@ -198,31 +201,37 @@ impl OutputFormatter for StdoutFormatter {
                 let port_str = format!("{}/{}", port.number, port.protocol);
                 let service = sanitize_terminal(port.service.as_deref().unwrap_or("unknown"));
                 let reason = if show_reason {
-                    sanitize_terminal(port.reason
-                        .as_deref()
-                        .unwrap_or_else(|| derive_reason(self.scan_type, port.state)))
+                    sanitize_terminal(
+                        port.reason
+                            .as_deref()
+                            .unwrap_or_else(|| derive_reason(self.scan_type, port.state)),
+                    )
                 } else {
                     String::new()
                 };
 
                 match (has_version_info, show_reason) {
                     (true, true) => {
-                        let version = sanitize_terminal(&port
-                            .service_info
-                            .as_ref()
-                            .and_then(|si| si.version_display())
-                            .unwrap_or_default());
+                        let version = sanitize_terminal(
+                            &port
+                                .service_info
+                                .as_ref()
+                                .and_then(|si| si.version_display())
+                                .unwrap_or_default(),
+                        );
                         output.push_str(&format!(
                             "{:<9} {:<8} {:<12} {:<10} {}\n",
                             port_str, port.state, reason, service, version
                         ));
                     }
                     (true, false) => {
-                        let version = sanitize_terminal(&port
-                            .service_info
-                            .as_ref()
-                            .and_then(|si| si.version_display())
-                            .unwrap_or_default());
+                        let version = sanitize_terminal(
+                            &port
+                                .service_info
+                                .as_ref()
+                                .and_then(|si| si.version_display())
+                                .unwrap_or_default(),
+                        );
                         output.push_str(&format!(
                             "{:<9} {:<8} {:<10} {}\n",
                             port_str, port.state, service, version
@@ -235,10 +244,8 @@ impl OutputFormatter for StdoutFormatter {
                         ));
                     }
                     (false, false) => {
-                        output.push_str(&format!(
-                            "{:<9} {:<8} {}\n",
-                            port_str, port.state, service
-                        ));
+                        output
+                            .push_str(&format!("{:<9} {:<8} {}\n", port_str, port.state, service));
                     }
                 }
 
@@ -262,14 +269,18 @@ impl OutputFormatter for StdoutFormatter {
                     // Certificate chain info
                     if let Some(ref chain) = tls.certificate_chain {
                         if let Some(leaf) = chain.first() {
-                            let subject = sanitize_terminal(leaf.subject_cn.as_deref().unwrap_or("unknown"));
-                            let issuer = sanitize_terminal(leaf.issuer_cn.as_deref().unwrap_or("unknown"));
-                            let expiry = sanitize_terminal(leaf.not_after.as_deref().unwrap_or("unknown"));
+                            let subject =
+                                sanitize_terminal(leaf.subject_cn.as_deref().unwrap_or("unknown"));
+                            let issuer =
+                                sanitize_terminal(leaf.issuer_cn.as_deref().unwrap_or("unknown"));
+                            let expiry =
+                                sanitize_terminal(leaf.not_after.as_deref().unwrap_or("unknown"));
                             output.push_str(&format!(
                                 "              CERT: {subject} (issuer: {issuer}) expires: {expiry}\n"
                             ));
                             if !leaf.san_dns.is_empty() {
-                                let sanitized_sans: Vec<String> = leaf.san_dns.iter().map(|s| sanitize_terminal(s)).collect();
+                                let sanitized_sans: Vec<String> =
+                                    leaf.san_dns.iter().map(|s| sanitize_terminal(s)).collect();
                                 output.push_str(&format!(
                                     "              SANs: {}\n",
                                     sanitized_sans.join(", ")
@@ -305,7 +316,9 @@ impl OutputFormatter for StdoutFormatter {
                     .accuracy
                     .map(|a| format!(" ({a}% confidence)"))
                     .unwrap_or_default();
-                output.push_str(&format!("OS details: {family_safe}{generation}{confidence}\n"));
+                output.push_str(&format!(
+                    "OS details: {family_safe}{generation}{confidence}\n"
+                ));
             }
 
             // Uptime estimate
@@ -320,7 +333,15 @@ impl OutputFormatter for StdoutFormatter {
 
             // Risk score
             if let Some(risk) = host_result.risk_score {
-                let sev = if risk >= 9.0 { "CRITICAL" } else if risk >= 7.0 { "HIGH" } else if risk >= 4.0 { "MEDIUM" } else { "LOW" };
+                let sev = if risk >= 9.0 {
+                    "CRITICAL"
+                } else if risk >= 7.0 {
+                    "HIGH"
+                } else if risk >= 4.0 {
+                    "MEDIUM"
+                } else {
+                    "LOW"
+                };
                 output.push_str(&format!("Risk Score: {risk:.1}/10.0 ({sev})\n"));
             }
 
@@ -431,10 +452,14 @@ fn derive_reason(scan_type: ScanType, state: PortState) -> &'static str {
         (ScanType::TcpConnect, PortState::Open) => "syn-ack",
         (ScanType::TcpConnect, PortState::Closed) => "conn-refused",
         // FIN/NULL/Xmas/Maimon scans
-        (ScanType::TcpFin | ScanType::TcpNull | ScanType::TcpXmas | ScanType::TcpMaimon,
-         PortState::Closed) => "rst",
-        (ScanType::TcpFin | ScanType::TcpNull | ScanType::TcpXmas | ScanType::TcpMaimon,
-         PortState::OpenFiltered) => "no-response",
+        (
+            ScanType::TcpFin | ScanType::TcpNull | ScanType::TcpXmas | ScanType::TcpMaimon,
+            PortState::Closed,
+        ) => "rst",
+        (
+            ScanType::TcpFin | ScanType::TcpNull | ScanType::TcpXmas | ScanType::TcpMaimon,
+            PortState::OpenFiltered,
+        ) => "no-response",
         // ACK scan
         (ScanType::TcpAck, PortState::Unfiltered) => "rst",
         // Window scan
@@ -461,7 +486,11 @@ fn format_script_results(results: &[ScriptResult], output: &mut String) {
         let sanitized_output = sanitize_terminal(&sr.output);
         let lines: Vec<&str> = sanitized_output.lines().collect();
         if lines.len() <= 1 {
-            output.push_str(&format!("| {}: {}\n", sanitize_terminal(&sr.id), sanitized_output));
+            output.push_str(&format!(
+                "| {}: {}\n",
+                sanitize_terminal(&sr.id),
+                sanitized_output
+            ));
         } else {
             output.push_str(&format!("| {}:\n", sanitize_terminal(&sr.id)));
             for line in lines {
@@ -474,7 +503,9 @@ fn format_script_results(results: &[ScriptResult], output: &mut String) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustmap_types::{Host, HostScanResult, OsFingerprint, OsProbeResults, Port, Protocol, ScriptResult, ScanType};
+    use rustmap_types::{
+        Host, HostScanResult, OsFingerprint, OsProbeResults, Port, Protocol, ScanType, ScriptResult,
+    };
     use std::net::{IpAddr, Ipv4Addr};
     use std::time::Duration;
 
@@ -1383,10 +1414,19 @@ mod tests {
         };
 
         let output = StdoutFormatter::default().format(&result).unwrap();
-        assert!(output.contains("Service distribution:"), "should have histogram header");
-        assert!(output.contains("http(2)"), "http should appear with count 2");
+        assert!(
+            output.contains("Service distribution:"),
+            "should have histogram header"
+        );
+        assert!(
+            output.contains("http(2)"),
+            "http should appear with count 2"
+        );
         assert!(output.contains("ssh(1)"), "ssh should appear with count 1");
-        assert!(output.contains("https(1)"), "https should appear with count 1");
+        assert!(
+            output.contains("https(1)"),
+            "https should appear with count 1"
+        );
     }
 
     #[test]
@@ -1417,6 +1457,9 @@ mod tests {
         };
 
         let output = StdoutFormatter::default().format(&result).unwrap();
-        assert!(!output.contains("Service distribution:"), "ping-only should not show histogram");
+        assert!(
+            !output.contains("Service distribution:"),
+            "ping-only should not show histogram"
+        );
     }
 }

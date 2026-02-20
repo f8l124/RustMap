@@ -236,7 +236,11 @@ pub fn render(frame: &mut ratatui::Frame, area: Rect, state: &mut ConfigScreenSt
         &intensity_str,
         f == FIELD_INTENSITY,
     ));
-    lines.push(toggle_field("  OS -O:       ", state.os_detection, f == FIELD_OS));
+    lines.push(toggle_field(
+        "  OS -O:       ",
+        state.os_detection,
+        f == FIELD_OS,
+    ));
     lines.push(Line::from(""));
 
     // === Features ===
@@ -618,9 +622,7 @@ fn expand_cidr(s: &str) -> Result<Vec<IpAddr>, String> {
 }
 
 fn expand_range(s: &str) -> Result<Vec<IpAddr>, String> {
-    let dash_pos = s
-        .rfind('-')
-        .ok_or_else(|| format!("Invalid range: {s}"))?;
+    let dash_pos = s.rfind('-').ok_or_else(|| format!("Invalid range: {s}"))?;
     let base = &s[..dash_pos];
     let end_str = &s[dash_pos + 1..];
 

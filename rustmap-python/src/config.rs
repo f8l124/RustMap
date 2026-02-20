@@ -151,10 +151,8 @@ impl PyScanConfig {
             top_tcp_ports(1000)
         };
 
-        let scan_type =
-            scan_type_from_str(&self.scan_type).map_err(RustmapError::new_err)?;
-        let timing_template =
-            timing_from_value(self.timing).map_err(RustmapError::new_err)?;
+        let scan_type = scan_type_from_str(&self.scan_type).map_err(RustmapError::new_err)?;
+        let timing_template = timing_from_value(self.timing).map_err(RustmapError::new_err)?;
 
         let timing_params = TimingParams::from_template(timing_template);
 

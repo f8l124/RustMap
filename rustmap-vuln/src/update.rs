@@ -145,7 +145,8 @@ async fn fetch_cves_for_keyword(
             {
                 Ok(resp) => {
                     if !resp.status().is_success() {
-                        last_err = Some(anyhow::anyhow!("NVD API returned status {}", resp.status()));
+                        last_err =
+                            Some(anyhow::anyhow!("NVD API returned status {}", resp.status()));
                         continue;
                     }
                     match resp.bytes().await {
@@ -154,7 +155,8 @@ async fn fetch_cves_for_keyword(
                             break;
                         }
                         Err(e) => {
-                            last_err = Some(anyhow::anyhow!("failed to read NVD response body: {e}"));
+                            last_err =
+                                Some(anyhow::anyhow!("failed to read NVD response body: {e}"));
                         }
                     }
                 }
@@ -165,7 +167,11 @@ async fn fetch_cves_for_keyword(
         }
         let body_bytes = match body_bytes {
             Some(b) => b,
-            None => return Err(last_err.unwrap_or_else(|| anyhow::anyhow!("NVD request failed after retries"))),
+            None => {
+                return Err(
+                    last_err.unwrap_or_else(|| anyhow::anyhow!("NVD request failed after retries"))
+                );
+            }
         };
         if body_bytes.len() > 50_000_000 {
             anyhow::bail!(
@@ -193,10 +199,7 @@ async fn fetch_cves_for_keyword(
                 None => continue,
             };
 
-            let cve_id = cve
-                .get("id")
-                .and_then(|v| v.as_str())
-                .unwrap_or_default();
+            let cve_id = cve.get("id").and_then(|v| v.as_str()).unwrap_or_default();
 
             if cve_id.is_empty() {
                 continue;
@@ -335,14 +338,19 @@ fn extract_product_rules(cve: &serde_json::Value, cve_id: &str) -> Vec<rustmap_d
                     .get("versionStartIncluding")
                     .and_then(|v| v.as_str())
                     .map(String::from);
-                let (version_end, version_end_exclusive) =
-                    if let Some(v) = cpe_match.get("versionEndExcluding").and_then(|v| v.as_str()) {
-                        (Some(v.to_string()), true)
-                    } else if let Some(v) = cpe_match.get("versionEndIncluding").and_then(|v| v.as_str()) {
-                        (Some(v.to_string()), false)
-                    } else {
-                        (None, false)
-                    };
+                let (version_end, version_end_exclusive) = if let Some(v) = cpe_match
+                    .get("versionEndExcluding")
+                    .and_then(|v| v.as_str())
+                {
+                    (Some(v.to_string()), true)
+                } else if let Some(v) = cpe_match
+                    .get("versionEndIncluding")
+                    .and_then(|v| v.as_str())
+                {
+                    (Some(v.to_string()), false)
+                } else {
+                    (None, false)
+                };
 
                 rules.push(rustmap_db::CveRule {
                     cve_id: cve_id.to_string(),
@@ -409,7 +417,10 @@ async fn fetch_cisa_kev(
         anyhow::bail!("CISA KEV returned status {}", resp.status());
     }
 
-    let body_bytes = resp.bytes().await.context("failed to read KEV response body")?;
+    let body_bytes = resp
+        .bytes()
+        .await
+        .context("failed to read KEV response body")?;
     if body_bytes.len() > 50_000_000 {
         anyhow::bail!(
             "CISA KEV response too large ({} bytes, max 50MB)",

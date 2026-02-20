@@ -157,9 +157,7 @@ impl P0fDatabase {
 
         for sig in signatures {
             let score = score_p0f_match(sig, fingerprint);
-            if score >= 50
-                && best_match.as_ref().is_none_or(|m| score > m.score)
-            {
+            if score >= 50 && best_match.as_ref().is_none_or(|m| score > m.score) {
                 best_match = Some(P0fMatch {
                     label: sig.label.clone(),
                     score,
@@ -287,7 +285,7 @@ fn parse_label(s: &str, line_num: usize) -> Result<Option<P0fLabel>, P0fParseErr
             return Err(P0fParseError::Parse {
                 line: line_num + 1,
                 message: format!("invalid label format: {s}"),
-            })
+            });
         }
     };
 
@@ -326,10 +324,7 @@ fn parse_signature(
     })?;
 
     // olen (field 2): IP options length
-    let ip_opt_len = parts[2]
-        .trim()
-        .parse::<u8>()
-        .unwrap_or(0);
+    let ip_opt_len = parts[2].trim().parse::<u8>().unwrap_or(0);
 
     // mss (field 3)
     let mss = parse_mss_spec(parts[3].trim());
@@ -381,16 +376,10 @@ fn parse_mss_spec(s: &str) -> P0fMssSpec {
 fn parse_window_spec(s: &str) -> (P0fWindowSpec, Option<u8>) {
     let parts: Vec<&str> = s.split(',').collect();
     let wsize_str = parts[0].trim();
-    let scale = parts
-        .get(1)
-        .and_then(|s| {
-            let s = s.trim();
-            if s == "*" {
-                None
-            } else {
-                s.parse::<u8>().ok()
-            }
-        });
+    let scale = parts.get(1).and_then(|s| {
+        let s = s.trim();
+        if s == "*" { None } else { s.parse::<u8>().ok() }
+    });
 
     let window_spec = if wsize_str == "*" {
         P0fWindowSpec::Wildcard
@@ -609,13 +598,21 @@ sig   = *:64:0:*:65535,6:mss,nop,ws,nop,nop,ts,sok:df:0
 
     #[test]
     fn lcs_exact_match() {
-        let a = vec![TcpOptionKind::Mss, TcpOptionKind::Nop, TcpOptionKind::WindowScale];
+        let a = vec![
+            TcpOptionKind::Mss,
+            TcpOptionKind::Nop,
+            TcpOptionKind::WindowScale,
+        ];
         assert_eq!(lcs_length(&a, &a), 3);
     }
 
     #[test]
     fn lcs_partial_match() {
-        let a = vec![TcpOptionKind::Mss, TcpOptionKind::Nop, TcpOptionKind::WindowScale];
+        let a = vec![
+            TcpOptionKind::Mss,
+            TcpOptionKind::Nop,
+            TcpOptionKind::WindowScale,
+        ];
         let b = vec![TcpOptionKind::Mss, TcpOptionKind::WindowScale];
         assert_eq!(lcs_length(&a, &b), 2);
     }

@@ -57,9 +57,16 @@ pub async fn run_os_probes(
 
     // Probe 1: SYN to open port
     let src_port1 = port_alloc.next_port();
-    results.syn_open =
-        send_and_capture_syn(&sender, &mut capture, src_ip, src_port1, target_ip, open_port, &done)
-            .await;
+    results.syn_open = send_and_capture_syn(
+        &sender,
+        &mut capture,
+        src_ip,
+        src_port1,
+        target_ip,
+        open_port,
+        &done,
+    )
+    .await;
 
     tokio::time::sleep(INTER_PROBE_DELAY).await;
 
@@ -80,9 +87,16 @@ pub async fn run_os_probes(
 
     // Probe 3: ACK to open port
     let src_port3 = port_alloc.next_port();
-    results.ack_open =
-        send_and_capture_ack(&sender, &mut capture, src_ip, src_port3, target_ip, open_port, &done)
-            .await;
+    results.ack_open = send_and_capture_ack(
+        &sender,
+        &mut capture,
+        src_ip,
+        src_port3,
+        target_ip,
+        open_port,
+        &done,
+    )
+    .await;
 
     capture.stop();
 

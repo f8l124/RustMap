@@ -31,7 +31,7 @@ impl RawSocketSender {
         if src_ip.is_ipv4() {
             // IP_HDRINCL: we construct the full IP header ourselves
             socket
-                .set_header_included(true)
+                .set_header_included_v4(true)
                 .map_err(|e| PacketError::SendFailed(format!("IP_HDRINCL failed: {e}")))?;
         }
         // For IPv6 raw sockets, IPV6_HDRINCL is not standard on Linux.
@@ -61,7 +61,10 @@ impl RawSocketSender {
     /// which never include extension headers.
     fn ipv6_strip_header<'a>(&self, packet: &'a [u8], dst_ip: IpAddr) -> &'a [u8] {
         if dst_ip.is_ipv6() && packet.len() > 40 {
-            debug_assert!(packet.len() >= 40, "IPv6 packet shorter than minimum header");
+            debug_assert!(
+                packet.len() >= 40,
+                "IPv6 packet shorter than minimum header"
+            );
             &packet[40..]
         } else {
             packet

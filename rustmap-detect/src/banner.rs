@@ -44,7 +44,7 @@ impl BannerGrabber {
         let mut stream = match connect_tcp(addr, proxy, self.connect_timeout).await {
             Ok(s) => s,
             Err(e) if e.kind() == std::io::ErrorKind::TimedOut => {
-                return Err(DetectionError::Timeout)
+                return Err(DetectionError::Timeout);
             }
             Err(e) => return Err(DetectionError::Connection(e.to_string())),
         };
@@ -126,9 +126,7 @@ mod tests {
     async fn grab_returns_error_on_refused() {
         // Use a port that's very unlikely to be in use
         let grabber = BannerGrabber::new(Duration::from_millis(500));
-        let result = grabber
-            .grab(IpAddr::V4(Ipv4Addr::LOCALHOST), 1, None)
-            .await;
+        let result = grabber.grab(IpAddr::V4(Ipv4Addr::LOCALHOST), 1, None).await;
 
         assert!(result.is_err());
     }

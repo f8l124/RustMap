@@ -16,9 +16,10 @@ use rustmap_types::ScanResult;
 fn validate_output_path(path: &std::path::Path) -> Result<(), OutputError> {
     for component in path.components() {
         if matches!(component, std::path::Component::ParentDir) {
-            return Err(OutputError::FormatError(
-                format!("output path '{}' must not contain '..' components", path.display())
-            ));
+            return Err(OutputError::FormatError(format!(
+                "output path '{}' must not contain '..' components",
+                path.display()
+            )));
         }
     }
     Ok(())
@@ -83,7 +84,7 @@ impl OutputManager {
 mod tests {
     use super::*;
     use crate::config::OutputConfig;
-    use rustmap_types::{HostScanResult, HostStatus, Host, ScanType};
+    use rustmap_types::{Host, HostScanResult, HostStatus, ScanType};
     use std::net::{IpAddr, Ipv4Addr};
     use std::time::Duration;
 
@@ -274,9 +275,7 @@ mod tests {
 
         let tmp_dir = std::env::temp_dir();
         let basename = "rustmap_test_all_formats";
-        let specs = OutputConfig::expand_all_formats(
-            &tmp_dir.join(basename).to_string_lossy(),
-        );
+        let specs = OutputConfig::expand_all_formats(&tmp_dir.join(basename).to_string_lossy());
 
         let config = OutputConfig {
             outputs: specs,
@@ -309,10 +308,16 @@ mod tests {
         let csv_path = tmp_dir.join(format!("{basename}.csv"));
 
         let nmap = fs::read_to_string(&nmap_path).unwrap();
-        assert!(nmap.contains("rustmap"), "Normal output should contain 'rustmap'");
+        assert!(
+            nmap.contains("rustmap"),
+            "Normal output should contain 'rustmap'"
+        );
 
         let xml = fs::read_to_string(&xml_path).unwrap();
-        assert!(xml.starts_with("<?xml"), "XML should start with declaration");
+        assert!(
+            xml.starts_with("<?xml"),
+            "XML should start with declaration"
+        );
         assert!(xml.contains("portid=\"80\""));
 
         let gnmap = fs::read_to_string(&gnmap_path).unwrap();
@@ -327,12 +332,18 @@ mod tests {
         let _: serde_yaml::Value = serde_yaml::from_str(&yaml).unwrap();
 
         let csv = fs::read_to_string(&csv_path).unwrap();
-        assert!(csv.starts_with("ip,hostname,country,city,asn,as_org,port,"), "CSV should start with header");
+        assert!(
+            csv.starts_with("ip,hostname,country,city,asn,as_org,port,"),
+            "CSV should start with header"
+        );
         assert!(csv.contains(",80,"), "CSV should contain port 80");
 
         let html_path = tmp_dir.join(format!("{basename}.html"));
         let html = fs::read_to_string(&html_path).unwrap();
-        assert!(html.starts_with("<!DOCTYPE html>"), "HTML should start with doctype");
+        assert!(
+            html.starts_with("<!DOCTYPE html>"),
+            "HTML should start with doctype"
+        );
         assert!(html.contains("192.168.1.1"), "HTML should contain host IP");
 
         // Cleanup

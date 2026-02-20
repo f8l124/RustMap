@@ -2,8 +2,8 @@
 // WebSocket event streaming
 // ---------------------------------------------------------------------------
 
-use std::sync::atomic::Ordering;
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 
 use axum::extract::ws::{Message, WebSocket};
 use axum::extract::{Path, Query, State, WebSocketUpgrade};
@@ -24,7 +24,9 @@ struct WsConnectionGuard {
 
 impl Drop for WsConnectionGuard {
     fn drop(&mut self) {
-        self.state.ws_connection_count.fetch_sub(1, Ordering::Relaxed);
+        self.state
+            .ws_connection_count
+            .fetch_sub(1, Ordering::Relaxed);
     }
 }
 
@@ -63,9 +65,9 @@ pub async fn scan_events_ws(
 
     // Look up the scan
     let scans = state.scans.read().await;
-    let tracked = scans.get(&scan_id).ok_or_else(|| {
-        ApiError::NotFound(format!("scan not found: {scan_id}"))
-    })?;
+    let tracked = scans
+        .get(&scan_id)
+        .ok_or_else(|| ApiError::NotFound(format!("scan not found: {scan_id}")))?;
 
     // Subscribe to the broadcast channel
     let event_rx = tracked.event_tx.subscribe();
@@ -90,7 +92,9 @@ pub async fn scan_events_ws(
             "too many WebSocket connections; try again later".into(),
         ));
     }
-    let guard = WsConnectionGuard { state: state.clone() };
+    let guard = WsConnectionGuard {
+        state: state.clone(),
+    };
 
     Ok(ws.on_upgrade(move |socket| handle_ws(socket, event_rx, guard)))
 }
@@ -108,8 +112,7 @@ async fn handle_ws(
                     WsEvent::Complete { .. } | WsEvent::Error { .. }
                 );
 
-                let json =
-                    serde_json::to_string(event.as_ref()).unwrap_or_default();
+                let json = serde_json::to_string(event.as_ref()).unwrap_or_default();
 
                 if socket.send(Message::Text(json.into())).await.is_err() {
                     // Client disconnected

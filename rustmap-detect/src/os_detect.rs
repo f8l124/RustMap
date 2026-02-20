@@ -1,7 +1,9 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use rustmap_types::{OsFingerprint, OsProbeResults, Port, PortState, TcpFingerprint, TcpOptionKind};
+use rustmap_types::{
+    OsFingerprint, OsProbeResults, Port, PortState, TcpFingerprint, TcpOptionKind,
+};
 
 use crate::os_signatures::{OsSignature, OsSignatureDb};
 use crate::p0f_parser::P0fDatabase;
@@ -158,9 +160,7 @@ impl OsDetector {
 
         for sig in &self.signature_db.signatures {
             let score = score_against_signature(fingerprint, sig);
-            if score >= MIN_CONFIDENCE as u16
-                && best.as_ref().is_none_or(|b| score > b.score)
-            {
+            if score >= MIN_CONFIDENCE as u16 && best.as_ref().is_none_or(|b| score > b.score) {
                 best = Some(ScoredMatch {
                     os_family: sig.os_family.to_string(),
                     os_generation: sig.os_generation.to_string(),
@@ -192,11 +192,7 @@ impl OsDetector {
     }
 
     /// Bonus points from TLS fingerprinting when it agrees with the TCP-based match.
-    fn tls_bonus(
-        &self,
-        tls_fp: &rustmap_types::TlsServerFingerprint,
-        tcp_os_family: &str,
-    ) -> u16 {
+    fn tls_bonus(&self, tls_fp: &rustmap_types::TlsServerFingerprint, tcp_os_family: &str) -> u16 {
         if let Some(tls_match) = self.tls_db.match_fingerprint(tls_fp) {
             if tls_match.os_family == tcp_os_family {
                 // TLS agrees with TCP — full bonus
@@ -284,17 +280,18 @@ pub fn infer_os_from_services(ports: &[Port]) -> Option<OsFingerprint> {
         }
     }
 
-    let (os_family, os_generation) =
-        if linux_count >= windows_count && linux_count >= freebsd_count && linux_count > 0 {
-            ("Linux", "")
-        } else if windows_count >= linux_count && windows_count >= freebsd_count && windows_count > 0
-        {
-            ("Windows", "")
-        } else if freebsd_count > 0 {
-            ("FreeBSD", "")
-        } else {
-            return None;
-        };
+    let (os_family, os_generation) = if linux_count >= windows_count
+        && linux_count >= freebsd_count
+        && linux_count > 0
+    {
+        ("Linux", "")
+    } else if windows_count >= linux_count && windows_count >= freebsd_count && windows_count > 0 {
+        ("Windows", "")
+    } else if freebsd_count > 0 {
+        ("FreeBSD", "")
+    } else {
+        return None;
+    };
 
     // Cap accuracy: service inference is weaker than probe-based detection.
     // Scale by number of agreeing services (more = higher confidence, up to 70%).
@@ -713,7 +710,7 @@ mod tests {
             syn_open: Some(linux_fingerprint()),
             tls: Some(rustmap_types::TlsServerFingerprint {
                 tls_version: 0x0303,
-                cipher_suite: 0xC030, // Schannel preference
+                cipher_suite: 0xC030,             // Schannel preference
                 extensions: vec![0xFF01, 0x0017], // Windows-like extensions
                 compression_method: 0,
                 alpn: None,

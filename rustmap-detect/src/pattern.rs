@@ -144,8 +144,8 @@ mod tests {
 
     #[test]
     fn no_match_returns_none() {
-        let pattern = MatchPattern::new(r"SSH-([\d.]+)-", "ssh", None, Some(1), None, None)
-            .unwrap();
+        let pattern =
+            MatchPattern::new(r"SSH-([\d.]+)-", "ssh", None, Some(1), None, None).unwrap();
 
         let banner = b"HTTP/1.1 200 OK\r\n";
         let result = pattern.try_match(banner, DetectionMethod::Banner);

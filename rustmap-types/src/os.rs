@@ -200,7 +200,10 @@ mod tests {
     fn tcp_option_kind_extraction() {
         assert_eq!(TcpOption::Mss(1460).kind(), TcpOptionKind::Mss);
         assert_eq!(TcpOption::WindowScale(7).kind(), TcpOptionKind::WindowScale);
-        assert_eq!(TcpOption::SackPermitted.kind(), TcpOptionKind::SackPermitted);
+        assert_eq!(
+            TcpOption::SackPermitted.kind(),
+            TcpOptionKind::SackPermitted
+        );
         assert_eq!(TcpOption::Timestamp(0, 0).kind(), TcpOptionKind::Timestamp);
         assert_eq!(TcpOption::Nop.kind(), TcpOptionKind::Nop);
         assert_eq!(TcpOption::Eol.kind(), TcpOptionKind::Eol);

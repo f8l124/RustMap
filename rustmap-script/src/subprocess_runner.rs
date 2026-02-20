@@ -74,9 +74,7 @@ pub fn run_python_subprocess(
 
     // Parse JSON result
     let value: serde_json::Value = serde_json::from_str(stdout).map_err(|e| {
-        ScriptError::Execution(format!(
-            "failed to parse Python script output as JSON: {e}"
-        ))
+        ScriptError::Execution(format!("failed to parse Python script output as JSON: {e}"))
     })?;
 
     extract_result(script_id, &value)
@@ -89,10 +87,8 @@ fn build_input_json(
     phase: &str,
     args: &[(String, String)],
 ) -> serde_json::Value {
-    let args_map: HashMap<&str, &str> = args
-        .iter()
-        .map(|(k, v)| (k.as_str(), v.as_str()))
-        .collect();
+    let args_map: HashMap<&str, &str> =
+        args.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
 
     serde_json::json!({
         "phase": phase,
@@ -260,7 +256,12 @@ mod tests {
             tls_info: None,
         };
 
-        let json = build_input_json(&host, Some(&port), "portrule", &[("key".into(), "val".into())]);
+        let json = build_input_json(
+            &host,
+            Some(&port),
+            "portrule",
+            &[("key".into(), "val".into())],
+        );
         assert_eq!(json["phase"], "portrule");
         assert_eq!(json["host"]["ip"], "10.0.0.1");
         assert_eq!(json["host"]["hostname"], "test.local");

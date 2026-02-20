@@ -19,7 +19,10 @@ impl PyScriptResult {
     }
     #[getter]
     fn elements<'py>(&self, py: Python<'py>) -> Option<PyObject> {
-        self.inner.elements.as_ref().map(|v| script_value_to_py(py, v))
+        self.inner
+            .elements
+            .as_ref()
+            .map(|v| script_value_to_py(py, v))
     }
 
     fn __repr__(&self) -> String {

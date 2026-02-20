@@ -28,8 +28,10 @@ pub fn render(
         format!(" History ({count} scans) ")
     };
 
-    let header = Row::new(vec!["Scan ID", "Type", "Hosts", "Ports", "Duration", "Started"])
-        .style(Style::default().add_modifier(Modifier::BOLD));
+    let header = Row::new(vec![
+        "Scan ID", "Type", "Hosts", "Ports", "Duration", "Started",
+    ])
+    .style(Style::default().add_modifier(Modifier::BOLD));
 
     let rows: Vec<Row> = state
         .scans
@@ -82,10 +84,7 @@ pub fn handle_key(
 
     // Dismiss diff overlay first
     if state.show_diff {
-        if matches!(
-            key.code,
-            KeyCode::Esc | KeyCode::Char('q') | KeyCode::Enter
-        ) {
+        if matches!(key.code, KeyCode::Esc | KeyCode::Char('q') | KeyCode::Enter) {
             state.show_diff = false;
             state.diff_result = None;
             state.diff_first = None;
