@@ -24,7 +24,7 @@ windows-sys = { version = "0.59", features = [
     "Win32_Networking_WinSock",
 ] }
 
-[target.'cfg(unix)'.dependencies]
+[target.'cfg(target_os = "linux")'.dependencies]
 caps = "0.5"
 libc = "0.2"
 socket2 = { version = "0.5", features = ["all"] }

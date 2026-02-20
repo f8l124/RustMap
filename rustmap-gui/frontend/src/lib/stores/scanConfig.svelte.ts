@@ -7,7 +7,13 @@ class ScanConfigStore {
   timing = $state(3);
   serviceDetection = $state(false);
   osDetection = $state(false);
-  skipDiscovery = $state(false);
+  discoveryMode = $state("default");
+  discoveryMethods = $state<string[]>([]);
+  tcpSynPorts = $state("");
+  tcpAckPorts = $state("");
+  udpPingPorts = $state("");
+  httpPorts = $state("");
+  httpsPorts = $state("");
   timeoutMs = $state(0);
   concurrency = $state(0);
   maxHostgroup = $state(256);
@@ -18,6 +24,19 @@ class ScanConfigStore {
   sourcePort = $state<number | null>(null);
   fragmentPackets = $state(false);
   traceroute = $state(false);
+  versionIntensity = $state(7);
+  scanDelayMs = $state(0);
+  mtuDiscovery = $state(false);
+  verbose = $state(false);
+  minHostgroup = $state(1);
+  maxScanDelayMs = $state(0);
+  probeTimeoutMs = $state(0);
+  quicProbing = $state(true);
+  proxyUrl = $state("");
+  decoys = $state("");
+  preResolvedUp = $state("");
+  payloadType = $state("none");
+  payloadValue = $state("");
 
   get configValid(): boolean {
     return this.targets.trim().length > 0;
@@ -36,7 +55,13 @@ class ScanConfigStore {
       timing: this.timing,
       service_detection: this.serviceDetection,
       os_detection: this.osDetection,
-      skip_discovery: this.skipDiscovery,
+      discovery_mode: this.discoveryMode,
+      discovery_methods: this.discoveryMethods,
+      tcp_syn_ports: this.tcpSynPorts.trim() || null,
+      tcp_ack_ports: this.tcpAckPorts.trim() || null,
+      udp_ping_ports: this.udpPingPorts.trim() || null,
+      http_ports: this.httpPorts.trim() || null,
+      https_ports: this.httpsPorts.trim() || null,
       timeout_ms: this.timeoutMs,
       concurrency: this.concurrency,
       max_hostgroup: this.maxHostgroup,
@@ -47,6 +72,19 @@ class ScanConfigStore {
       source_port: this.sourcePort,
       fragment_packets: this.fragmentPackets,
       traceroute: this.traceroute,
+      version_intensity: this.versionIntensity,
+      scan_delay_ms: this.scanDelayMs,
+      mtu_discovery: this.mtuDiscovery,
+      verbose: this.verbose,
+      min_hostgroup: this.minHostgroup,
+      max_scan_delay_ms: this.maxScanDelayMs,
+      probe_timeout_ms: this.probeTimeoutMs,
+      quic_probing: this.quicProbing,
+      proxy_url: this.proxyUrl.trim() || null,
+      decoys: this.decoys.trim() || null,
+      pre_resolved_up: this.preResolvedUp.trim() || null,
+      payload_type: this.payloadType,
+      payload_value: this.payloadValue.trim() || null,
     };
   }
 
@@ -57,7 +95,13 @@ class ScanConfigStore {
     this.timing = 3;
     this.serviceDetection = false;
     this.osDetection = false;
-    this.skipDiscovery = false;
+    this.discoveryMode = "default";
+    this.discoveryMethods = [];
+    this.tcpSynPorts = "";
+    this.tcpAckPorts = "";
+    this.udpPingPorts = "";
+    this.httpPorts = "";
+    this.httpsPorts = "";
     this.timeoutMs = 0;
     this.concurrency = 0;
     this.maxHostgroup = 256;
@@ -68,6 +112,19 @@ class ScanConfigStore {
     this.sourcePort = null;
     this.fragmentPackets = false;
     this.traceroute = false;
+    this.versionIntensity = 7;
+    this.scanDelayMs = 0;
+    this.mtuDiscovery = false;
+    this.verbose = false;
+    this.minHostgroup = 1;
+    this.maxScanDelayMs = 0;
+    this.probeTimeoutMs = 0;
+    this.quicProbing = true;
+    this.proxyUrl = "";
+    this.decoys = "";
+    this.preResolvedUp = "";
+    this.payloadType = "none";
+    this.payloadValue = "";
   }
 }
 

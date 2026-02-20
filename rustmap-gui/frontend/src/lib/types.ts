@@ -176,7 +176,13 @@ export interface GuiScanConfig {
   timing: number;
   service_detection: boolean;
   os_detection: boolean;
-  skip_discovery: boolean;
+  discovery_mode: string;
+  discovery_methods: string[];
+  tcp_syn_ports: string | null;
+  tcp_ack_ports: string | null;
+  udp_ping_ports: string | null;
+  http_ports: string | null;
+  https_ports: string | null;
   timeout_ms: number;
   concurrency: number;
   max_hostgroup: number;
@@ -187,6 +193,19 @@ export interface GuiScanConfig {
   source_port: number | null;
   fragment_packets: boolean;
   traceroute: boolean;
+  version_intensity: number;
+  scan_delay_ms: number;
+  mtu_discovery: boolean;
+  verbose: boolean;
+  min_hostgroup: number;
+  max_scan_delay_ms: number;
+  probe_timeout_ms: number;
+  quic_probing: boolean;
+  proxy_url: string | null;
+  decoys: string | null;
+  pre_resolved_up: string | null;
+  payload_type: string;
+  payload_value: string | null;
 }
 
 export interface PrivilegeInfo {

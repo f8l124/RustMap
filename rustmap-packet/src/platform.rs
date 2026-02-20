@@ -9,7 +9,7 @@ use crate::traits::PacketSender;
 /// - Linux: raw socket with IP_HDRINCL
 /// - Windows: Npcap packet injection
 pub fn create_sender(target_ip: IpAddr) -> Result<Box<dyn PacketSender>, PacketError> {
-    #[cfg(unix)]
+    #[cfg(target_os = "linux")]
     {
         use crate::sender_linux::RawSocketSender;
         let sender = RawSocketSender::new(get_local_ip(target_ip)?)?;
@@ -21,7 +21,7 @@ pub fn create_sender(target_ip: IpAddr) -> Result<Box<dyn PacketSender>, PacketE
         let sender = NpcapSender::new(target_ip)?;
         Ok(Box::new(sender))
     }
-    #[cfg(not(any(unix, windows)))]
+    #[cfg(not(any(target_os = "linux", windows)))]
     {
         let _ = target_ip;
         Err(PacketError::SendFailed(
@@ -37,7 +37,7 @@ pub fn create_capture(config: CaptureConfig) -> Result<AsyncCapture, PacketError
 
 /// Get the local source IP for reaching a target.
 /// Used on Linux where we need to specify src_ip for raw sockets.
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 fn get_local_ip(target: IpAddr) -> Result<IpAddr, PacketError> {
     // Connect a UDP socket to determine the outbound IP
     // (no actual traffic is sent — just routing lookup)

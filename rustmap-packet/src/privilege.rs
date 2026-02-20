@@ -29,11 +29,11 @@ pub fn check_privileges() -> PrivilegeLevel {
     {
         crate::privilege_windows::check()
     }
-    #[cfg(unix)]
+    #[cfg(target_os = "linux")]
     {
         crate::privilege_linux::check()
     }
-    #[cfg(not(any(windows, unix)))]
+    #[cfg(not(any(windows, target_os = "linux")))]
     {
         PrivilegeLevel::Unprivileged
     }

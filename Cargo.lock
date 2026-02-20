@@ -5360,6 +5360,7 @@ dependencies = [
 name = "rustmap-gui"
 version = "0.1.0"
 dependencies = [
+ "rand 0.8.5",
  "rustmap-core",
  "rustmap-db",
  "rustmap-output",

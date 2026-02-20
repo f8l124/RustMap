@@ -13,8 +13,24 @@
     bind:checked={scanConfig.osDetection}
   />
   <Toggle
-    label="Skip Discovery (-Pn)"
-    bind:checked={scanConfig.skipDiscovery}
+    label="Traceroute (--traceroute)"
+    bind:checked={scanConfig.traceroute}
+  />
+  <Toggle
+    label="Randomize Ports (-r)"
+    bind:checked={scanConfig.randomizePorts}
+  />
+  <Toggle
+    label="MTU Discovery"
+    bind:checked={scanConfig.mtuDiscovery}
+  />
+  <Toggle
+    label="Verbose (-v)"
+    bind:checked={scanConfig.verbose}
+  />
+  <Toggle
+    label="QUIC Probing"
+    bind:checked={scanConfig.quicProbing}
   />
 </div>
 

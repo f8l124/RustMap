@@ -14,12 +14,12 @@ pub mod udp_payloads;
 pub mod net_windows;
 #[cfg(windows)]
 pub mod sender_windows;
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 pub mod sender_linux;
 
 #[cfg(windows)]
 mod privilege_windows;
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 mod privilege_linux;
 
 pub use capture::{AsyncCapture, CaptureConfig, fixed_port_bpf_filter, list_interfaces, udp_bpf_filter, udp_fixed_port_bpf_filter};

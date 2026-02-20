@@ -4,6 +4,7 @@
   import ScanTypeSelector from "./ScanTypeSelector.svelte";
   import TimingSelector from "./TimingSelector.svelte";
   import FeatureToggles from "./FeatureToggles.svelte";
+  import DiscoveryConfig from "./DiscoveryConfig.svelte";
   import AdvancedOptions from "./AdvancedOptions.svelte";
   import ScanActions from "./ScanActions.svelte";
   import { scanConfig } from "../../stores/scanConfig.svelte";
@@ -27,6 +28,7 @@
       <TimingSelector />
     </div>
     <FeatureToggles />
+    <DiscoveryConfig />
     <AdvancedOptions />
   </div>
   {#if showPrivilegeWarning}

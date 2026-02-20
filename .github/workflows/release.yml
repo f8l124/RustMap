@@ -171,6 +171,13 @@ jobs:
           path: target/release/bundle/nsis/*.exe
           if-no-files-found: error
 
+      - name: Upload GUI portable
+        uses: actions/upload-artifact@v4
+        with:
+          name: rustmap-gui-windows-portable
+          path: target/release/rustmap-gui.exe
+          if-no-files-found: warn
+
   gui-linux:
     name: GUI (Linux x86_64)
     runs-on: ubuntu-latest
@@ -272,6 +279,13 @@ jobs:
           path: target/release/bundle/dmg/*.dmg
           if-no-files-found: error
 
+      - name: Upload GUI portable app
+        uses: actions/upload-artifact@v4
+        with:
+          name: rustmap-gui-macos-arm64-app
+          path: target/release/bundle/macos/*.app
+          if-no-files-found: warn
+
   # ─── Release ──────────────────────────────────────────────────
 
   release:
@@ -318,6 +332,17 @@ jobs:
           # GUI installers — macOS
           cp artifacts/rustmap-gui-macos-arm64/*.dmg \
              release-assets/rustmap-macos-arm64.dmg
+
+          # GUI portable — Windows
+          cp artifacts/rustmap-gui-windows-portable/rustmap-gui.exe \
+             release-assets/rustmap-gui-portable-windows-x86_64.exe 2>/dev/null || true
+
+          # GUI portable — macOS (zip the .app bundle)
+          if [ -d "artifacts/rustmap-gui-macos-arm64-app" ]; then
+            cd artifacts/rustmap-gui-macos-arm64-app
+            zip -r ../../release-assets/rustmap-gui-portable-macos-arm64.zip *.app
+            cd ../..
+          fi
 
           # Make Linux/macOS binaries executable
           chmod +x release-assets/rustmap-linux-x86_64

@@ -3,8 +3,8 @@ use std::time::Duration;
 use rustmap_core::parse_target;
 use rustmap_timing::TimingParams;
 use rustmap_types::{
-    DiscoveryConfig, DiscoveryMode, OsDetectionConfig, PortRange, ScanConfig, ScanType,
-    ServiceDetectionConfig, TimingTemplate, top_tcp_ports,
+    DiscoveryConfig, DiscoveryMethod, DiscoveryMode, OsDetectionConfig, PortRange, ProxyConfig,
+    ScanConfig, ScanType, ServiceDetectionConfig, TimingTemplate, top_tcp_ports,
 };
 use serde::{Deserialize, Serialize};
 
@@ -20,7 +20,13 @@ pub struct GuiScanConfig {
     pub timing: u8,
     pub service_detection: bool,
     pub os_detection: bool,
-    pub skip_discovery: bool,
+    pub discovery_mode: String,
+    pub discovery_methods: Vec<String>,
+    pub tcp_syn_ports: Option<String>,
+    pub tcp_ack_ports: Option<String>,
+    pub udp_ping_ports: Option<String>,
+    pub http_ports: Option<String>,
+    pub https_ports: Option<String>,
     pub timeout_ms: u64,
     pub concurrency: usize,
     pub max_hostgroup: usize,
@@ -31,6 +37,36 @@ pub struct GuiScanConfig {
     pub source_port: Option<u16>,
     pub fragment_packets: bool,
     pub traceroute: bool,
+    pub version_intensity: u8,
+    pub scan_delay_ms: u64,
+    pub mtu_discovery: bool,
+    pub verbose: bool,
+    pub min_hostgroup: usize,
+    pub max_scan_delay_ms: u64,
+    pub probe_timeout_ms: u64,
+    pub quic_probing: bool,
+    pub proxy_url: Option<String>,
+    pub decoys: Option<String>,
+    pub pre_resolved_up: Option<String>,
+    pub payload_type: String,
+    pub payload_value: Option<String>,
+}
+
+fn parse_port_list_opt(s: &Option<String>) -> Result<Option<Vec<u16>>, String> {
+    match s {
+        Some(s) if !s.trim().is_empty() => {
+            let ports: Vec<u16> = s
+                .split(',')
+                .map(|p| {
+                    p.trim()
+                        .parse::<u16>()
+                        .map_err(|_| format!("invalid port '{}'", p.trim()))
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(Some(ports))
+        }
+        _ => Ok(None),
+    }
 }
 
 impl GuiScanConfig {
@@ -97,13 +133,47 @@ impl GuiScanConfig {
         };
 
         // Discovery config
-        let discovery = if self.skip_discovery {
-            DiscoveryConfig {
+        let discovery = match self.discovery_mode.as_str() {
+            "skip" => DiscoveryConfig {
                 mode: DiscoveryMode::Skip,
                 ..DiscoveryConfig::default()
+            },
+            "ping_only" => DiscoveryConfig {
+                mode: DiscoveryMode::PingOnly,
+                ..DiscoveryConfig::default()
+            },
+            "custom" => {
+                let methods: Vec<DiscoveryMethod> = self
+                    .discovery_methods
+                    .iter()
+                    .map(|m| match m.as_str() {
+                        "icmp_echo" => Ok(DiscoveryMethod::IcmpEcho),
+                        "tcp_syn" => Ok(DiscoveryMethod::TcpSyn),
+                        "tcp_ack" => Ok(DiscoveryMethod::TcpAck),
+                        "icmp_timestamp" => Ok(DiscoveryMethod::IcmpTimestamp),
+                        "udp_ping" => Ok(DiscoveryMethod::UdpPing),
+                        "arp_ping" => Ok(DiscoveryMethod::ArpPing),
+                        "http_ping" => Ok(DiscoveryMethod::HttpPing),
+                        "https_ping" => Ok(DiscoveryMethod::HttpsPing),
+                        other => Err(format!("unknown discovery method: {other}")),
+                    })
+                    .collect::<Result<_, _>>()?;
+                let defaults = DiscoveryConfig::default();
+                DiscoveryConfig {
+                    mode: DiscoveryMode::Custom(methods),
+                    tcp_syn_ports: parse_port_list_opt(&self.tcp_syn_ports)?
+                        .unwrap_or(defaults.tcp_syn_ports),
+                    tcp_ack_ports: parse_port_list_opt(&self.tcp_ack_ports)?
+                        .unwrap_or(defaults.tcp_ack_ports),
+                    udp_ports: parse_port_list_opt(&self.udp_ping_ports)?
+                        .unwrap_or(defaults.udp_ports),
+                    http_ports: parse_port_list_opt(&self.http_ports)?
+                        .unwrap_or(defaults.http_ports),
+                    https_ports: parse_port_list_opt(&self.https_ports)?
+                        .unwrap_or(defaults.https_ports),
+                }
             }
-        } else {
-            DiscoveryConfig::default()
+            _ => DiscoveryConfig::default(),
         };
 
         Ok(ScanConfig {
@@ -112,36 +182,123 @@ impl GuiScanConfig {
             scan_type,
             timeout,
             concurrency,
-            verbose: false,
+            verbose: self.verbose,
             timing_template,
             discovery,
             service_detection: ServiceDetectionConfig {
                 enabled: self.service_detection,
+                intensity: self.version_intensity,
+                probe_timeout: if self.probe_timeout_ms > 0 {
+                    Duration::from_millis(self.probe_timeout_ms)
+                } else {
+                    ServiceDetectionConfig::default().probe_timeout
+                },
+                quic_probing: self.quic_probing,
                 ..ServiceDetectionConfig::default()
             },
             os_detection: OsDetectionConfig {
                 enabled: self.os_detection,
             },
-            min_hostgroup: 1,
+            min_hostgroup: self.min_hostgroup,
             max_hostgroup: self.max_hostgroup,
             host_timeout: Duration::from_millis(self.host_timeout_ms),
             min_rate: self.min_rate,
             max_rate: self.max_rate,
             randomize_ports: self.randomize_ports,
             source_port: self.source_port,
-            decoys: Vec::new(), // Decoys configured via CLI only
+            decoys: if let Some(ref decoy_str) = self.decoys {
+                decoy_str
+                    .split(',')
+                    .map(|s| s.trim())
+                    .filter(|s| !s.is_empty())
+                    .map(|s| s.parse().map_err(|e| format!("invalid decoy IP '{}': {}", s, e)))
+                    .collect::<Result<Vec<_>, _>>()?
+            } else {
+                Vec::new()
+            },
             fragment_packets: self.fragment_packets,
-            custom_payload: None,
+            custom_payload: match self.payload_type.as_str() {
+                "hex" => {
+                    let s = self.payload_value.as_deref().unwrap_or("");
+                    let hex = s.strip_prefix("0x").unwrap_or(s);
+                    if hex.is_empty() {
+                        None
+                    } else {
+                        if hex.len() % 2 != 0 {
+                            return Err(
+                                "hex payload must have even number of characters".into()
+                            );
+                        }
+                        let bytes: Vec<u8> = (0..hex.len())
+                            .step_by(2)
+                            .map(|i| {
+                                u8::from_str_radix(&hex[i..i + 2], 16)
+                                    .map_err(|_| format!("invalid hex at position {i}"))
+                            })
+                            .collect::<Result<_, _>>()?;
+                        Some(bytes)
+                    }
+                }
+                "string" => {
+                    let s = self.payload_value.as_deref().unwrap_or("");
+                    if s.is_empty() {
+                        None
+                    } else {
+                        Some(s.as_bytes().to_vec())
+                    }
+                }
+                "length" => {
+                    let s = self.payload_value.as_deref().unwrap_or("0");
+                    let n: usize = s
+                        .parse()
+                        .map_err(|_| format!("invalid payload length: {s}"))?;
+                    if n == 0 {
+                        None
+                    } else if n > 65400 {
+                        return Err("payload length must be <= 65400".into());
+                    } else {
+                        let mut buf = vec![0u8; n];
+                        use rand::RngCore;
+                        rand::thread_rng().fill_bytes(&mut buf);
+                        Some(buf)
+                    }
+                }
+                _ => None,
+            },
             traceroute: self.traceroute,
-            scan_delay: None,
-            max_scan_delay: None,
+            scan_delay: if self.scan_delay_ms > 0 {
+                Some(Duration::from_millis(self.scan_delay_ms))
+            } else {
+                None
+            },
+            max_scan_delay: if self.max_scan_delay_ms > 0 {
+                Some(Duration::from_millis(self.max_scan_delay_ms))
+            } else {
+                None
+            },
             learned_initial_rto_us: None,
             learned_initial_cwnd: None,
             learned_ssthresh: None,
             learned_max_retries: None,
-            pre_resolved_up: vec![],
-            proxy: None,
-            mtu_discovery: false,
+            pre_resolved_up: if let Some(ref up_str) = self.pre_resolved_up {
+                up_str
+                    .split(',')
+                    .map(|s| s.trim())
+                    .filter(|s| !s.is_empty())
+                    .map(|s| {
+                        s.parse()
+                            .map_err(|e| format!("invalid pre-resolved IP '{}': {}", s, e))
+                    })
+                    .collect::<Result<Vec<_>, _>>()?
+            } else {
+                vec![]
+            },
+            proxy: if let Some(ref url) = self.proxy_url {
+                Some(ProxyConfig::parse(url).map_err(|e| format!("invalid proxy: {e}"))?)
+            } else {
+                None
+            },
+            mtu_discovery: self.mtu_discovery,
         })
     }
 }
@@ -158,7 +315,13 @@ mod tests {
             timing: 3,
             service_detection: false,
             os_detection: false,
-            skip_discovery: false,
+            discovery_mode: "default".into(),
+            discovery_methods: vec![],
+            tcp_syn_ports: None,
+            tcp_ack_ports: None,
+            udp_ping_ports: None,
+            http_ports: None,
+            https_ports: None,
             timeout_ms: 0,
             concurrency: 0,
             max_hostgroup: 256,
@@ -169,6 +332,19 @@ mod tests {
             source_port: None,
             fragment_packets: false,
             traceroute: false,
+            version_intensity: 7,
+            scan_delay_ms: 0,
+            mtu_discovery: false,
+            verbose: false,
+            min_hostgroup: 1,
+            max_scan_delay_ms: 0,
+            probe_timeout_ms: 0,
+            quic_probing: true,
+            proxy_url: None,
+            decoys: None,
+            pre_resolved_up: None,
+            payload_type: "none".into(),
+            payload_value: None,
         }
     }
 
@@ -372,18 +548,61 @@ mod tests {
     // --- Flag propagation ---
 
     #[test]
-    fn skip_discovery_sets_mode() {
+    fn discovery_mode_default() {
+        let cfg = default_gui_config();
+        let result = cfg.into_scan_config().unwrap();
+        assert_eq!(result.discovery.mode, DiscoveryMode::Default);
+    }
+
+    #[test]
+    fn discovery_mode_skip() {
         let mut cfg = default_gui_config();
-        cfg.skip_discovery = true;
+        cfg.discovery_mode = "skip".into();
         let result = cfg.into_scan_config().unwrap();
         assert_eq!(result.discovery.mode, DiscoveryMode::Skip);
     }
 
     #[test]
-    fn discovery_default_mode() {
-        let cfg = default_gui_config();
+    fn discovery_mode_ping_only() {
+        let mut cfg = default_gui_config();
+        cfg.discovery_mode = "ping_only".into();
         let result = cfg.into_scan_config().unwrap();
-        assert_ne!(result.discovery.mode, DiscoveryMode::Skip);
+        assert_eq!(result.discovery.mode, DiscoveryMode::PingOnly);
+    }
+
+    #[test]
+    fn discovery_mode_custom_methods() {
+        let mut cfg = default_gui_config();
+        cfg.discovery_mode = "custom".into();
+        cfg.discovery_methods = vec!["icmp_echo".into(), "tcp_syn".into()];
+        let result = cfg.into_scan_config().unwrap();
+        match result.discovery.mode {
+            DiscoveryMode::Custom(methods) => {
+                assert_eq!(methods.len(), 2);
+                assert_eq!(methods[0], DiscoveryMethod::IcmpEcho);
+                assert_eq!(methods[1], DiscoveryMethod::TcpSyn);
+            }
+            other => panic!("expected Custom, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn discovery_custom_ports_override() {
+        let mut cfg = default_gui_config();
+        cfg.discovery_mode = "custom".into();
+        cfg.discovery_methods = vec!["tcp_syn".into()];
+        cfg.tcp_syn_ports = Some("80,8080".into());
+        let result = cfg.into_scan_config().unwrap();
+        assert_eq!(result.discovery.tcp_syn_ports, vec![80, 8080]);
+    }
+
+    #[test]
+    fn discovery_invalid_method_errors() {
+        let mut cfg = default_gui_config();
+        cfg.discovery_mode = "custom".into();
+        cfg.discovery_methods = vec!["bogus".into()];
+        let err = cfg.into_scan_config().unwrap_err();
+        assert!(err.contains("unknown discovery method"), "got: {err}");
     }
 
     #[test]
@@ -464,5 +683,222 @@ mod tests {
         cfg.randomize_ports = true;
         let result = cfg.into_scan_config().unwrap();
         assert!(result.randomize_ports);
+    }
+
+    #[test]
+    fn version_intensity_propagates() {
+        let mut cfg = default_gui_config();
+        cfg.service_detection = true;
+        cfg.version_intensity = 3;
+        let result = cfg.into_scan_config().unwrap();
+        assert_eq!(result.service_detection.intensity, 3);
+    }
+
+    #[test]
+    fn scan_delay_propagates() {
+        let mut cfg = default_gui_config();
+        cfg.scan_delay_ms = 500;
+        let result = cfg.into_scan_config().unwrap();
+        assert_eq!(result.scan_delay, Some(Duration::from_millis(500)));
+    }
+
+    #[test]
+    fn scan_delay_zero_is_none() {
+        let cfg = default_gui_config();
+        let result = cfg.into_scan_config().unwrap();
+        assert_eq!(result.scan_delay, None);
+    }
+
+    #[test]
+    fn mtu_discovery_propagates() {
+        let mut cfg = default_gui_config();
+        cfg.mtu_discovery = true;
+        let result = cfg.into_scan_config().unwrap();
+        assert!(result.mtu_discovery);
+    }
+
+    #[test]
+    fn verbose_propagates() {
+        let mut cfg = default_gui_config();
+        cfg.verbose = true;
+        let result = cfg.into_scan_config().unwrap();
+        assert!(result.verbose);
+    }
+
+    #[test]
+    fn min_hostgroup_propagates() {
+        let mut cfg = default_gui_config();
+        cfg.min_hostgroup = 16;
+        let result = cfg.into_scan_config().unwrap();
+        assert_eq!(result.min_hostgroup, 16);
+    }
+
+    #[test]
+    fn max_scan_delay_propagates() {
+        let mut cfg = default_gui_config();
+        cfg.max_scan_delay_ms = 1000;
+        let result = cfg.into_scan_config().unwrap();
+        assert_eq!(result.max_scan_delay, Some(Duration::from_millis(1000)));
+    }
+
+    #[test]
+    fn max_scan_delay_zero_is_none() {
+        let cfg = default_gui_config();
+        let result = cfg.into_scan_config().unwrap();
+        assert_eq!(result.max_scan_delay, None);
+    }
+
+    #[test]
+    fn probe_timeout_propagates() {
+        let mut cfg = default_gui_config();
+        cfg.probe_timeout_ms = 3000;
+        let result = cfg.into_scan_config().unwrap();
+        assert_eq!(
+            result.service_detection.probe_timeout,
+            Duration::from_millis(3000)
+        );
+    }
+
+    #[test]
+    fn probe_timeout_zero_uses_default() {
+        let cfg = default_gui_config();
+        let result = cfg.into_scan_config().unwrap();
+        assert_eq!(
+            result.service_detection.probe_timeout,
+            ServiceDetectionConfig::default().probe_timeout
+        );
+    }
+
+    #[test]
+    fn quic_probing_propagates() {
+        let mut cfg = default_gui_config();
+        cfg.quic_probing = false;
+        let result = cfg.into_scan_config().unwrap();
+        assert!(!result.service_detection.quic_probing);
+    }
+
+    #[test]
+    fn proxy_url_propagates() {
+        let mut cfg = default_gui_config();
+        cfg.proxy_url = Some("socks5://127.0.0.1:1080".into());
+        let result = cfg.into_scan_config().unwrap();
+        let proxy = result.proxy.unwrap();
+        assert_eq!(proxy.host, "127.0.0.1");
+        assert_eq!(proxy.port, 1080);
+    }
+
+    #[test]
+    fn proxy_url_none_is_none() {
+        let cfg = default_gui_config();
+        let result = cfg.into_scan_config().unwrap();
+        assert!(result.proxy.is_none());
+    }
+
+    #[test]
+    fn proxy_url_invalid_returns_error() {
+        let mut cfg = default_gui_config();
+        cfg.proxy_url = Some("http://not-socks".into());
+        let err = cfg.into_scan_config().unwrap_err();
+        assert!(err.contains("proxy"), "got: {err}");
+    }
+
+    #[test]
+    fn decoys_propagate() {
+        let mut cfg = default_gui_config();
+        cfg.decoys = Some("10.0.0.1, 10.0.0.2".into());
+        let result = cfg.into_scan_config().unwrap();
+        assert_eq!(result.decoys.len(), 2);
+        assert_eq!(result.decoys[0].to_string(), "10.0.0.1");
+        assert_eq!(result.decoys[1].to_string(), "10.0.0.2");
+    }
+
+    #[test]
+    fn decoys_invalid_returns_error() {
+        let mut cfg = default_gui_config();
+        cfg.decoys = Some("not-an-ip".into());
+        let err = cfg.into_scan_config().unwrap_err();
+        assert!(err.contains("decoy"), "got: {err}");
+    }
+
+    #[test]
+    fn pre_resolved_up_propagates() {
+        let mut cfg = default_gui_config();
+        cfg.pre_resolved_up = Some("192.168.1.1, 192.168.1.2".into());
+        let result = cfg.into_scan_config().unwrap();
+        assert_eq!(result.pre_resolved_up.len(), 2);
+    }
+
+    #[test]
+    fn pre_resolved_up_invalid_returns_error() {
+        let mut cfg = default_gui_config();
+        cfg.pre_resolved_up = Some("bad-ip".into());
+        let err = cfg.into_scan_config().unwrap_err();
+        assert!(err.contains("pre-resolved"), "got: {err}");
+    }
+
+    // --- Custom payload ---
+
+    #[test]
+    fn payload_none_is_none() {
+        let cfg = default_gui_config();
+        let result = cfg.into_scan_config().unwrap();
+        assert!(result.custom_payload.is_none());
+    }
+
+    #[test]
+    fn payload_hex_propagates() {
+        let mut cfg = default_gui_config();
+        cfg.payload_type = "hex".into();
+        cfg.payload_value = Some("deadbeef".into());
+        let result = cfg.into_scan_config().unwrap();
+        assert_eq!(
+            result.custom_payload.unwrap(),
+            vec![0xde, 0xad, 0xbe, 0xef]
+        );
+    }
+
+    #[test]
+    fn payload_hex_with_prefix() {
+        let mut cfg = default_gui_config();
+        cfg.payload_type = "hex".into();
+        cfg.payload_value = Some("0xCAFE".into());
+        let result = cfg.into_scan_config().unwrap();
+        assert_eq!(result.custom_payload.unwrap(), vec![0xca, 0xfe]);
+    }
+
+    #[test]
+    fn payload_hex_invalid_returns_error() {
+        let mut cfg = default_gui_config();
+        cfg.payload_type = "hex".into();
+        cfg.payload_value = Some("abc".into()); // odd length
+        let err = cfg.into_scan_config().unwrap_err();
+        assert!(err.contains("even number"), "got: {err}");
+    }
+
+    #[test]
+    fn payload_string_propagates() {
+        let mut cfg = default_gui_config();
+        cfg.payload_type = "string".into();
+        cfg.payload_value = Some("HELLO".into());
+        let result = cfg.into_scan_config().unwrap();
+        assert_eq!(result.custom_payload.unwrap(), b"HELLO");
+    }
+
+    #[test]
+    fn payload_length_propagates() {
+        let mut cfg = default_gui_config();
+        cfg.payload_type = "length".into();
+        cfg.payload_value = Some("32".into());
+        let result = cfg.into_scan_config().unwrap();
+        assert_eq!(result.custom_payload.unwrap().len(), 32);
+    }
+
+    #[test]
+    fn payload_length_too_large_returns_error() {
+        let mut cfg = default_gui_config();
+        cfg.payload_type = "length".into();
+        cfg.payload_value = Some("99999".into());
+        let err = cfg.into_scan_config().unwrap_err();
+        assert!(err.contains("65400"), "got: {err}");
     }
 }
