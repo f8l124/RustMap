@@ -120,6 +120,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set version from tag
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" rustmap-gui/tauri.conf.json
+
       - name: Cache Npcap SDK
         id: cache-npcap
         uses: actions/cache@v4
@@ -197,6 +203,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set version from tag
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" rustmap-gui/tauri.conf.json
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -269,6 +280,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set version from tag
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          sed -i '' "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" rustmap-gui/tauri.conf.json
+
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
@@ -313,13 +329,6 @@ jobs:
           name: rustmap-gui-macos-arm64
           path: target/release/bundle/dmg/*.dmg
           if-no-files-found: error
-
-      - name: Upload GUI portable app
-        uses: actions/upload-artifact@v4
-        with:
-          name: rustmap-gui-macos-arm64-app
-          path: target/release/bundle/macos/*.app
-          if-no-files-found: warn
 
   # ─── Release ──────────────────────────────────────────────────
 
@@ -371,13 +380,6 @@ jobs:
           # GUI portable — Windows
           cp artifacts/rustmap-gui-windows-portable/rustmap-gui.exe \
              release-assets/rustmap-gui-portable-windows-x86_64.exe 2>/dev/null || true
-
-          # GUI portable — macOS (zip the .app bundle)
-          if [ -d "artifacts/rustmap-gui-macos-arm64-app" ]; then
-            cd artifacts/rustmap-gui-macos-arm64-app
-            zip -r ../../release-assets/rustmap-gui-portable-macos-arm64.zip *.app
-            cd ../..
-          fi
 
           # Combined portable bundles (CLI + GUI together)
           # Windows
