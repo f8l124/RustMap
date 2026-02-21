@@ -1,4 +1,6 @@
 mod args;
+#[cfg(windows)]
+mod npcap;
 mod profiles;
 mod self_test;
 #[cfg(feature = "tui")]
@@ -163,14 +165,12 @@ async fn main() -> Result<()> {
     let privilege_level = check_privileges();
     info!("privilege level: {}", privilege_level);
 
-    // Check Npcap availability on Windows
+    // Check Npcap availability on Windows — offer to install if missing
     #[cfg(windows)]
-    if privilege_level.has_raw_socket_access() && !rustmap_packet::npcap_installed() {
-        bail!(
-            "Npcap is not installed. Raw packet scans require Npcap.\n\
-             Download: https://npcap.com/#download\n\
-             Hint: Use -sT for TCP Connect scan (no Npcap needed)."
-        );
+    if privilege_level.has_raw_socket_access()
+        && let Err(msg) = npcap::ensure_npcap()
+    {
+        bail!("{msg}");
     }
 
     // Build discovery config

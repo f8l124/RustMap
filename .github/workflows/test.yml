@@ -66,9 +66,25 @@ jobs:
         run: cargo clippy --workspace --exclude rustmap-gui --exclude rustmap-python -- -D warnings
 
       - name: Test
-        # Exclude rustmap-gui (needs Tauri), rustmap-python (needs PyO3/maturin),
-        # and rustmap-api (integration tests link wpcap.dll which isn't on CI runners)
-        run: cargo test --workspace --exclude rustmap-gui --exclude rustmap-python --exclude rustmap-api
+        # The Npcap SDK provides .lib files for compilation but not the runtime
+        # wpcap.dll needed for test execution. The free Npcap installer has no
+        # silent/headless mode (only the paid OEM edition does), so we cannot
+        # install the runtime on CI. Crates that transitively depend on pcap
+        # (via rustmap-packet) are excluded here and tested on Linux/macOS
+        # where libpcap is available.
+        #
+        # Pcap-dependent (7): rustmap-packet, rustmap-scan, rustmap-core,
+        #   rustmap-cli, rustmap-api, rustmap-gui, rustmap-python
+        # Also excluded for build deps: rustmap-gui (Tauri), rustmap-python (PyO3)
+        run: >-
+          cargo test --workspace
+          --exclude rustmap-packet
+          --exclude rustmap-scan
+          --exclude rustmap-core
+          --exclude rustmap-cli
+          --exclude rustmap-api
+          --exclude rustmap-gui
+          --exclude rustmap-python
 
   test-linux:
     name: Test (Linux)
@@ -201,6 +217,8 @@ jobs:
         run: npm run build
 
       - name: Test GUI crate
+        # Skip on Windows: test binary links wpcap.dll which requires Npcap runtime
+        if: runner.os != 'Windows'
         run: cargo test -p rustmap-gui
 
       - name: Build GUI crate
