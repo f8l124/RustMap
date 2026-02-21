@@ -105,6 +105,7 @@ mod tests {
         let fp = OsFingerprint {
             os_family: Some("Linux".into()),
             os_generation: None,
+            os_detail: None,
             accuracy: Some(90),
             probe_results: OsProbeResults {
                 syn_open: Some(make_fp_with_ts(86_400_000)),
@@ -125,6 +126,7 @@ mod tests {
         let fp = OsFingerprint {
             os_family: Some("Windows".into()),
             os_generation: None,
+            os_detail: None,
             accuracy: Some(90),
             probe_results: OsProbeResults {
                 syn_open: Some(make_fp_with_ts(8_640_000)),
@@ -145,6 +147,7 @@ mod tests {
         let fp = OsFingerprint {
             os_family: Some("Linux".into()),
             os_generation: None,
+            os_detail: None,
             accuracy: None,
             probe_results: OsProbeResults {
                 syn_open: Some(make_fp_with_ts(0)),
@@ -159,6 +162,7 @@ mod tests {
         let fp = OsFingerprint {
             os_family: None,
             os_generation: None,
+            os_detail: None,
             accuracy: None,
             probe_results: OsProbeResults::default(),
         };
@@ -170,6 +174,7 @@ mod tests {
         let fp = OsFingerprint {
             os_family: Some("Linux".into()),
             os_generation: None,
+            os_detail: None,
             accuracy: None,
             probe_results: OsProbeResults {
                 syn_open: Some(make_fp_with_ts(u32::MAX)),
@@ -205,6 +210,7 @@ mod tests {
         let fp = OsFingerprint {
             os_family: Some("Linux".into()),
             os_generation: None,
+            os_detail: None,
             accuracy: None,
             probe_results: OsProbeResults {
                 syn_open: Some(make_fp_with_ts(3_153_599)),
@@ -226,6 +232,7 @@ mod tests {
         let fp = OsFingerprint {
             os_family: Some("Linux".into()),
             os_generation: None,
+            os_detail: None,
             accuracy: None,
             probe_results: OsProbeResults {
                 syn_open: Some(make_fp_with_ts(3_153_600)),
@@ -249,6 +256,7 @@ mod tests {
         let fp = OsFingerprint {
             os_family: Some("FreeBSD".into()),
             os_generation: None,
+            os_detail: None,
             accuracy: None,
             probe_results: OsProbeResults {
                 syn_open: Some(make_fp_with_ts(u32::MAX - 1)),
@@ -277,6 +285,7 @@ mod tests {
         let fp = OsFingerprint {
             os_family: Some("Windows".into()),
             os_generation: None,
+            os_detail: None,
             accuracy: None,
             probe_results: OsProbeResults {
                 syn_open: Some(make_fp_with_ts(u32::MAX - 1)),

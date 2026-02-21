@@ -1,19 +1,57 @@
 <script lang="ts">
+  import { save } from "@tauri-apps/plugin-dialog";
   import { scanState } from "../../stores/scanState.svelte";
-  import { exportResults } from "../../tauri/commands";
+  import { exportToFile } from "../../tauri/commands";
 
   let format = $state("json");
   let exporting = $state(false);
+  let statusMsg = $state("");
+  let statusType = $state<"success" | "error" | "">("");
+
+  const extensions: Record<string, string> = {
+    json: "json",
+    xml: "xml",
+    normal: "txt",
+    grepable: "gnmap",
+  };
+
+  const filterNames: Record<string, string> = {
+    json: "JSON",
+    xml: "XML",
+    normal: "Text",
+    grepable: "Grepable",
+  };
+
+  function showStatus(msg: string, type: "success" | "error") {
+    statusMsg = msg;
+    statusType = type;
+    setTimeout(() => {
+      statusMsg = "";
+      statusType = "";
+    }, 3000);
+  }
 
   async function handleExport() {
     if (!scanState.scanId || exporting) return;
+
+    const ext = extensions[format] ?? "txt";
+    const path = await save({
+      defaultPath: `rustmap-scan.${ext}`,
+      filters: [
+        { name: filterNames[format] ?? format, extensions: [ext] },
+        { name: "All Files", extensions: ["*"] },
+      ],
+    });
+
+    if (!path) return; // User cancelled
+
     exporting = true;
     try {
-      const output = await exportResults(scanState.scanId, format);
-      // Copy to clipboard or trigger download
-      await navigator.clipboard.writeText(output);
+      await exportToFile(scanState.scanId, format, path);
+      showStatus("Saved", "success");
     } catch (e) {
       console.error("Export failed:", e);
+      showStatus("Export failed", "error");
     } finally {
       exporting = false;
     }
@@ -28,8 +66,11 @@
     <option value="grepable">Grepable</option>
   </select>
   <button class="btn" onclick={handleExport} disabled={exporting}>
-    {exporting ? "Copying..." : "Export"}
+    {exporting ? "Saving..." : "Export"}
   </button>
+  {#if statusMsg}
+    <span class="status {statusType}">{statusMsg}</span>
+  {/if}
 </div>
 
 <style>
@@ -65,5 +106,18 @@
   .btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  .status {
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  .status.success {
+    color: var(--accent-green, #4ade80);
+  }
+
+  .status.error {
+    color: var(--accent-red, #f87171);
   }
 </style>

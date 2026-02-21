@@ -680,6 +680,8 @@ async fn main() -> Result<()> {
                     if let Err(e) = runner.run_all(&mut result) {
                         eprintln!("Warning: script execution error: {e}");
                     }
+                    // Enrich OS detection from script results (e.g., SMB dialect → Windows version)
+                    rustmap_detect::enrich_os_from_scripts(&mut result);
                 }
             }
         }
@@ -1904,31 +1906,9 @@ fn reorder_ports_with_predictions(ports: &[u16], targets: &[rustmap_types::Host]
     result
 }
 
-/// Find directories containing Lua scripts.
+/// Find directories containing scripts (delegates to rustmap-script).
 pub(crate) fn find_script_dirs() -> Vec<PathBuf> {
-    let mut dirs = Vec::new();
-
-    // Next to the executable
-    if let Ok(exe) = std::env::current_exe()
-        && let Some(dir) = exe.parent()
-    {
-        let scripts_dir = dir.join("scripts");
-        if scripts_dir.is_dir() {
-            dirs.push(scripts_dir);
-        }
-    }
-
-    // Relative to CWD (development)
-    let cwd_scripts = PathBuf::from("scripts");
-    if cwd_scripts.is_dir() {
-        dirs.push(cwd_scripts);
-    }
-    let dev_scripts = PathBuf::from("rustmap-script/scripts");
-    if dev_scripts.is_dir() {
-        dirs.push(dev_scripts);
-    }
-
-    dirs
+    rustmap_script::find_script_dirs()
 }
 
 /// Update the CVE vulnerability database.

@@ -18,8 +18,11 @@ rustmap-packet = { workspace = true }
 rustmap-output = { workspace = true }
 rustmap-timing = { workspace = true }
 rustmap-db     = { workspace = true }
+rustmap-script = { workspace = true }
+rustmap-detect = { workspace = true }
 tauri          = { version = "2", features = ["devtools"] }
 tauri-plugin-shell = "2"
+tauri-plugin-dialog = "2"
 tokio          = { workspace = true }
 tokio-util     = { workspace = true }
 serde          = { workspace = true }

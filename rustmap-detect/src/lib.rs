@@ -18,7 +18,9 @@ pub use detector::ServiceDetector;
 pub use modern_probes::{
     QuicProbeResult, probe_http2_cleartext, probe_quic, probe_quic_detailed, probe_tls_for_service,
 };
-pub use os_detect::{OsDetector, infer_os_from_services};
+pub use os_detect::{
+    OsDetector, enrich_os_from_scripts, enrich_os_from_services, infer_os_from_services,
+};
 pub use port_map::PortServiceMap;
 pub use tls_fingerprint::{is_tls_port, probe_tls_server};
 pub use uptime::{estimate_uptime, format_uptime};

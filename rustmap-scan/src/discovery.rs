@@ -104,19 +104,36 @@ impl HostDiscovery {
             }
         }
 
-        // If no methods produced results (unprivileged, no HTTP), use TCP connect fallback
+        // TCP connect fallback: used when unprivileged, OR when raw discovery
+        // found zero live hosts (which may indicate a capture/driver issue rather
+        // than all hosts truly being down — common on Windows with Npcap).
+        let any_up = results.iter().any(|r| r.status == HostStatus::Up);
         if results.is_empty() && !privileged {
             info!("unprivileged — using TCP connect ping");
             results = discover_unprivileged(&target_ips, config).await?;
+        } else if !any_up && !results.is_empty() && privileged {
+            warn!("raw discovery found no live hosts — falling back to TCP connect discovery");
+            let connect_results = discover_unprivileged(&target_ips, config).await?;
+            for cr in connect_results {
+                if cr.status == HostStatus::Up
+                    && let Some(existing) = results.iter_mut().find(|r| r.ip == cr.ip)
+                {
+                    existing.status = HostStatus::Up;
+                    if existing.latency.is_none() {
+                        existing.latency = cr.latency;
+                    }
+                }
+            }
         }
 
-        // If still empty (edge case), return all results as-is
+        // If still no results at all (edge case), treat as unknown — not down.
+        // Unknown hosts proceed to port scanning which makes the final determination.
         if results.is_empty() {
             results = target_ips
                 .iter()
                 .map(|&ip| DiscoveryResult {
                     ip,
-                    status: HostStatus::Down,
+                    status: HostStatus::Unknown,
                     latency: None,
                 })
                 .collect();

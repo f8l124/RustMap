@@ -14,14 +14,14 @@ impl PatternDatabase {
         let mut patterns = Vec::new();
 
         // --- SSH ---
-        // OpenSSH with version extraction
+        // OpenSSH with version extraction + optional distro comment
         patterns.push(
             MatchPattern::new(
-                r"SSH-([\d.]+)-OpenSSH[_-]([\w.p]+)",
+                r"SSH-([\d.]+)-OpenSSH[_-]([\w.p]+)\s*(.*?)[\r\n]",
                 "ssh",
                 None,    // product via literal
                 Some(2), // version = OpenSSH version
-                Some(1), // info = protocol version
+                Some(3), // info = distro/vendor comment (e.g., "Ubuntu-6ubuntu0.2")
                 Some("OpenSSH"),
             )
             .unwrap(),

@@ -50,6 +50,10 @@ pub struct GuiScanConfig {
     pub pre_resolved_up: Option<String>,
     pub payload_type: String,
     pub payload_value: Option<String>,
+    pub script_enabled: bool,
+    pub scripts: Vec<String>,
+    pub script_args: Option<String>,
+    pub custom_script_paths: Vec<String>,
 }
 
 fn parse_port_list_opt(s: &Option<String>) -> Result<Option<Vec<u16>>, String> {
@@ -346,6 +350,10 @@ mod tests {
             pre_resolved_up: None,
             payload_type: "none".into(),
             payload_value: None,
+            script_enabled: false,
+            scripts: vec![],
+            script_args: None,
+            custom_script_paths: vec![],
         }
     }
 

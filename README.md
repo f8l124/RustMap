@@ -143,6 +143,8 @@ cargo build --release -p rustmap-cli --features "tui,cloud"
 
 TCP Connect scans (`-s T`) work without elevated privileges or pcap libraries.
 
+> **Windows first-run setup:** If Npcap is not installed, RustMap will offer to download and install it automatically on first run. You can also install Npcap manually from [npcap.com](https://npcap.com/#download). Npcap is free for personal use (up to 5 systems).
+
 ## CLI Reference
 
 ```

@@ -32,6 +32,43 @@ pub struct ScriptMeta {
     pub language: ScriptLanguage,
 }
 
+/// Find directories containing scripts (Lua, Python, WASM).
+///
+/// Searches next to the executable, and relative to CWD (for development).
+pub fn find_script_dirs() -> Vec<PathBuf> {
+    let mut dirs = Vec::new();
+
+    // Next to the executable
+    if let Ok(exe) = std::env::current_exe()
+        && let Some(dir) = exe.parent()
+    {
+        let scripts_dir = dir.join("scripts");
+        if scripts_dir.is_dir() {
+            dirs.push(scripts_dir);
+        }
+    }
+
+    // Relative to CWD (development)
+    let cwd_scripts = PathBuf::from("scripts");
+    if cwd_scripts.is_dir() {
+        dirs.push(cwd_scripts);
+    }
+    let dev_scripts = PathBuf::from("rustmap-script/scripts");
+    if dev_scripts.is_dir() {
+        dirs.push(dev_scripts);
+    }
+
+    // Compile-time fallback: workspace sibling (for GUI / separate target dir)
+    if dirs.is_empty() {
+        let compile_time = Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts");
+        if compile_time.is_dir() {
+            dirs.push(compile_time);
+        }
+    }
+
+    dirs
+}
+
 /// Discovers Lua scripts from filesystem directories and resolves
 /// user-specified script patterns into concrete script metadata.
 pub struct ScriptDiscovery {
@@ -280,6 +317,24 @@ impl ScriptDiscovery {
     /// Get all discovered scripts.
     pub fn scripts(&self) -> &[ScriptMeta] {
         &self.scripts
+    }
+
+    /// Parse metadata from a single script file at the given path.
+    ///
+    /// Supports `.lua`, `.py`, and (with the `wasm` feature) `.wasm` files.
+    /// Returns an error if the extension is unrecognised or the header
+    /// cannot be parsed.
+    pub fn parse_file(&self, path: &Path) -> Result<ScriptMeta, ScriptError> {
+        match path.extension().and_then(|e| e.to_str()) {
+            Some("lua") => self.parse_script_meta(path),
+            Some("py") => self.parse_python_meta(path),
+            #[cfg(feature = "wasm")]
+            Some("wasm") => self.parse_wasm_meta(path),
+            _ => Err(ScriptError::Discovery(format!(
+                "unsupported script extension: {}",
+                path.display()
+            ))),
+        }
     }
 }
 
@@ -934,7 +989,7 @@ import socket
     }
 
     #[test]
-    fn discover_all_scripts_at_least_53() {
+    fn discover_all_scripts_at_least_82() {
         let dir = real_scripts_dir();
         if !dir.exists() {
             eprintln!("Skipping: scripts dir not found at {dir:?}");
@@ -943,8 +998,8 @@ import socket
         let mut discovery = ScriptDiscovery::new(vec![dir]);
         let scripts = discovery.discover().unwrap();
         assert!(
-            scripts.len() >= 53,
-            "Expected >= 53 scripts, found {}",
+            scripts.len() >= 82,
+            "Expected >= 82 scripts, found {}",
             scripts.len()
         );
     }

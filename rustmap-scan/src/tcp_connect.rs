@@ -134,7 +134,14 @@ impl Scanner for TcpConnectScanner {
         let start = Instant::now();
         let ip = host.ip;
         let timeout = config.timeout;
-        let batch_size = config.concurrency;
+
+        // Cap TCP connect parallelism. Unlike raw scanners that work at the
+        // packet level, connect() allocates full OS sockets with kernel buffers
+        // and ephemeral ports. Blasting thousands of simultaneous connect() calls
+        // overwhelms the OS TCP stack (especially on Windows), causing spurious
+        // timeouts even for open ports.
+        const MAX_CONNECT_PARALLEL: usize = 512;
+        let batch_size = config.concurrency.min(MAX_CONNECT_PARALLEL);
 
         // Build port ordering: randomized via LCG or sequential
         let port_order: Vec<u16> = if config.randomize_ports {

@@ -11,8 +11,21 @@ import { getScanHistory } from "./commands";
 
 type UnlistenFn = () => void;
 
+function refreshHistory() {
+  getScanHistory()
+    .then((entries) => {
+      scanHistory.set(entries);
+    })
+    .catch((err) => {
+      console.error("Failed to load scan history:", err);
+    });
+}
+
 export function setupEventListeners(): () => void {
   const unlisteners: Promise<UnlistenFn>[] = [];
+
+  // Load history from DB on startup
+  refreshHistory();
 
   unlisteners.push(
     listen<ScanStartedPayload>("scan-started", (event) => {
@@ -29,16 +42,14 @@ export function setupEventListeners(): () => void {
   unlisteners.push(
     listen<ScanCompletePayload>("scan-complete", (event) => {
       scanState.onScanComplete(event.payload.result);
-      // Refresh history from backend
-      getScanHistory().then((entries) => {
-        scanHistory.set(entries);
-      });
+      refreshHistory();
     }),
   );
 
   unlisteners.push(
     listen<ScanErrorPayload>("scan-error", (event) => {
       scanState.onScanError(event.payload.error);
+      refreshHistory();
     }),
   );
 

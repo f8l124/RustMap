@@ -144,7 +144,7 @@ fn built_in_signatures() -> Vec<OsSignature> {
             os_family: "Linux",
             os_generation: "6.x",
             initial_ttl: 64,
-            window_sizes: &[65535, 64240],
+            window_sizes: &[65535, 64240, 32120, 29200, 31856, 26883],
             tcp_options_order: LINUX_OPTIONS,
             df_bit: true,
         },

@@ -706,6 +706,7 @@ mod tests {
                 os_fingerprint: Some(OsFingerprint {
                     os_family: Some("Linux".into()),
                     os_generation: Some("5.x".into()),
+                    os_detail: None,
                     accuracy: Some(92),
                     probe_results: OsProbeResults::default(),
                 }),
@@ -751,6 +752,7 @@ mod tests {
                 os_fingerprint: Some(OsFingerprint {
                     os_family: None,
                     os_generation: None,
+                    os_detail: None,
                     accuracy: None,
                     probe_results: OsProbeResults::default(),
                 }),

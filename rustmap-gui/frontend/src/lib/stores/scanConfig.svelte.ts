@@ -37,6 +37,10 @@ class ScanConfigStore {
   preResolvedUp = $state("");
   payloadType = $state("none");
   payloadValue = $state("");
+  scriptEnabled = $state(false);
+  scripts = $state<string[]>([]);
+  scriptArgs = $state("");
+  customScriptPaths = $state<string[]>([]);
 
   get configValid(): boolean {
     return this.targets.trim().length > 0;
@@ -85,6 +89,10 @@ class ScanConfigStore {
       pre_resolved_up: this.preResolvedUp.trim() || null,
       payload_type: this.payloadType,
       payload_value: this.payloadValue.trim() || null,
+      script_enabled: this.scriptEnabled,
+      scripts: this.scripts,
+      script_args: this.scriptArgs.trim() || null,
+      custom_script_paths: this.customScriptPaths,
     };
   }
 
@@ -125,6 +133,53 @@ class ScanConfigStore {
     this.preResolvedUp = "";
     this.payloadType = "none";
     this.payloadValue = "";
+    this.scriptEnabled = false;
+    this.scripts = [];
+    this.scriptArgs = "";
+    this.customScriptPaths = [];
+  }
+
+  loadFromConfig(config: GuiScanConfig) {
+    this.targets = config.targets.join(", ");
+    this.ports = config.ports ?? "";
+    this.scanType = config.scan_type;
+    this.timing = config.timing;
+    this.serviceDetection = config.service_detection;
+    this.osDetection = config.os_detection;
+    this.discoveryMode = config.discovery_mode;
+    this.discoveryMethods = config.discovery_methods;
+    this.tcpSynPorts = config.tcp_syn_ports ?? "";
+    this.tcpAckPorts = config.tcp_ack_ports ?? "";
+    this.udpPingPorts = config.udp_ping_ports ?? "";
+    this.httpPorts = config.http_ports ?? "";
+    this.httpsPorts = config.https_ports ?? "";
+    this.timeoutMs = config.timeout_ms;
+    this.concurrency = config.concurrency;
+    this.maxHostgroup = config.max_hostgroup;
+    this.hostTimeoutMs = config.host_timeout_ms;
+    this.minRate = config.min_rate;
+    this.maxRate = config.max_rate;
+    this.randomizePorts = config.randomize_ports;
+    this.sourcePort = config.source_port;
+    this.fragmentPackets = config.fragment_packets;
+    this.traceroute = config.traceroute;
+    this.versionIntensity = config.version_intensity;
+    this.scanDelayMs = config.scan_delay_ms;
+    this.mtuDiscovery = config.mtu_discovery;
+    this.verbose = config.verbose;
+    this.minHostgroup = config.min_hostgroup;
+    this.maxScanDelayMs = config.max_scan_delay_ms;
+    this.probeTimeoutMs = config.probe_timeout_ms;
+    this.quicProbing = config.quic_probing;
+    this.proxyUrl = config.proxy_url ?? "";
+    this.decoys = config.decoys ?? "";
+    this.preResolvedUp = config.pre_resolved_up ?? "";
+    this.payloadType = config.payload_type;
+    this.payloadValue = config.payload_value ?? "";
+    this.scriptEnabled = config.script_enabled;
+    this.scripts = config.scripts;
+    this.scriptArgs = config.script_args ?? "";
+    this.customScriptPaths = config.custom_script_paths;
   }
 }
 

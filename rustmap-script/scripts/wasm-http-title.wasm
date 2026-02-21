@@ -1,0 +1,44 @@
+(module
+  ;; summary: WASM proof-of-concept script demonstrating the wasmtime ABI
+  ;; categories: safe, discovery
+  ;; phases: portrule
+
+  ;; Export linear memory for host I/O
+  (memory (export "memory") 2)
+
+  ;; Simple bump allocator - returns offset 4096+ for input data
+  (global $heap_ptr (mut i32) (i32.const 4096))
+
+  ;; alloc(len) -> ptr: Allocate space for input JSON
+  (func (export "alloc") (param $len i32) (result i32)
+    (local $ptr i32)
+    (local.set $ptr (global.get $heap_ptr))
+    (global.set $heap_ptr (i32.add (global.get $heap_ptr) (local.get $len)))
+    (local.get $ptr)
+  )
+
+  ;; Data segment: output JSON string stored at offset 256
+  ;; 120 bytes exactly
+  (data (i32.const 256)
+    "{\"output\": \"WASM engine operational - wasmtime ABI v1 (alloc/action). Script received input and produced output successfully.\"}"
+  )
+
+  ;; action(ptr, len) -> packed u64 (out_ptr << 32 | out_len)
+  ;; Receives JSON input at ptr with length len, returns JSON output
+  (func (export "action") (param $ptr i32) (param $len i32) (result i64)
+    ;; If input length is 0, return null (empty output)
+    (if (i32.eqz (local.get $len))
+      (then (return (i64.const 0)))
+    )
+
+    ;; Return the pre-built output string at offset 256, length 127 bytes
+    ;; packed as: (256 << 32) | 127
+    (i64.or
+      (i64.shl
+        (i64.extend_i32_u (i32.const 256))
+        (i64.const 32)
+      )
+      (i64.const 127)
+    )
+  )
+)

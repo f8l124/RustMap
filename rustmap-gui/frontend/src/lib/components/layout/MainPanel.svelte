@@ -56,7 +56,7 @@
           {/if}
         </div>
       </div>
-      <button class="error-dismiss" onclick={() => scanState.dismissError()} title="Dismiss">\u2715</button>
+      <button class="error-dismiss" onclick={() => scanState.dismissError()} title="Dismiss">{"\u2715"}</button>
     </div>
   {/if}
   {#if scanState.phase === "complete" || scanState.hostResults.length > 0}

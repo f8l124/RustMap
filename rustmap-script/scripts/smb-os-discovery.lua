@@ -15,8 +15,9 @@ function action(host, port)
 
     -- SMB2 Negotiate Request
     -- NetBIOS session header + SMB2 header + Negotiate request
+    -- Offer all 5 SMB2/3 dialects so the server selects its highest supported version
     local smb2_negotiate = ""
-        .. "\x00\x00\x00\x68" -- NetBIOS: length 104 (64-byte header + 36-byte fixed + 4-byte dialects)
+        .. "\x00\x00\x00\x6E" -- NetBIOS: length 110 (64-byte header + 36-byte fixed + 10-byte dialects)
         .. "\xFE\x53\x4D\x42" -- SMB2 magic
         .. "\x40\x00"         -- Header length 64
         .. "\x00\x00"         -- Credit charge
@@ -32,7 +33,7 @@ function action(host, port)
         .. "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" -- Signature
         -- Negotiate body
         .. "\x24\x00"         -- Structure size 36
-        .. "\x02\x00"         -- Dialect count: 2
+        .. "\x05\x00"         -- Dialect count: 5
         .. "\x01\x00"         -- Security mode: signing enabled
         .. "\x00\x00"         -- Reserved
         .. "\x00\x00\x00\x00" -- Capabilities
@@ -42,6 +43,9 @@ function action(host, port)
         .. "\x00\x00"         -- Reserved2
         .. "\x02\x02"         -- Dialect: SMB 2.0.2
         .. "\x10\x02"         -- Dialect: SMB 2.1
+        .. "\x00\x03"         -- Dialect: SMB 3.0
+        .. "\x02\x03"         -- Dialect: SMB 3.0.2
+        .. "\x11\x03"         -- Dialect: SMB 3.1.1
 
     status, err = socket:send(smb2_negotiate)
     if not status then

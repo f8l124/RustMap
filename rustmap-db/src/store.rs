@@ -370,6 +370,12 @@ impl ScanStore {
         Ok(deleted > 0)
     }
 
+    /// Delete all scans and their associated data.
+    pub fn clear_all_scans(&self) -> Result<usize, DbError> {
+        let deleted = self.conn.execute("DELETE FROM scans", [])?;
+        Ok(deleted)
+    }
+
     /// Get the most recent scan summary for a specific target IP.
     pub fn last_scan_for_host(&self, ip: &str) -> Result<Option<ScanSummary>, DbError> {
         let mut stmt = self.conn.prepare(

@@ -571,7 +571,9 @@ async fn scan_single_host_inner(
                 result.os_fingerprint = Some(os_fp);
             }
         } else {
-            result.os_fingerprint = Some(os_fp);
+            let mut enriched = os_fp;
+            rustmap_detect::enrich_os_from_services(&mut enriched, &result.ports);
+            result.os_fingerprint = Some(enriched);
         }
     }
 

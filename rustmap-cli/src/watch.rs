@@ -229,6 +229,7 @@ fn run_scripts(
                 if let Err(e) = runner.run_all(result) {
                     warn!(error = %e, "script execution error in watch mode");
                 }
+                rustmap_detect::enrich_os_from_scripts(result);
             }
         }
     }

@@ -17,11 +17,13 @@
 
 Install [Visual Studio 2019/2022 Build Tools](https://visualstudio.microsoft.com/downloads/) with the "Desktop development with C++" workload.
 
-### 2. Install Npcap
+### 2. Install Npcap SDK
 
-Download and install [Npcap](https://npcap.com/#download) (runtime) and the [Npcap SDK](https://npcap.com/#download) (development headers).
+Download the [Npcap SDK](https://npcap.com/#download) (development headers for compilation).
 
 Extract the SDK to `C:\npcap-sdk\` so that `C:\npcap-sdk\Lib\x64\` contains `Packet.lib` and `wpcap.lib`.
+
+> **Note:** You only need the SDK to *build* RustMap. The Npcap runtime (`wpcap.dll`) is needed to *run* raw-socket scans, but RustMap will detect if it's missing at startup and offer to download and install it automatically. See [Runtime Setup](#npcap-runtime-not-found) below.
 
 ### 3. Install Rust
 
@@ -356,9 +358,8 @@ The project uses GitHub Actions for continuous integration and release builds.
 
 Runs on every push to `main` and on pull requests:
 - **rustfmt** check
-- **Clippy** lint (warnings as errors)
-- **Tests** on Windows and Linux
-- **GUI build check** on Windows
+- **Tests** on Windows, Linux, and macOS (Windows excludes pcap-dependent crates since Npcap runtime can't be installed in CI)
+- **GUI build check** on Windows, Linux, and macOS
 
 ### Release Workflow (`.github/workflows/release.yml`)
 
@@ -397,6 +398,22 @@ On Linux, you can grant raw socket capability without root:
 ```bash
 sudo setcap cap_net_raw=ep target/release/rustmap
 ```
+
+### Npcap runtime not found
+
+When you run RustMap on Windows without Npcap installed, the binary will detect the missing runtime and offer to download and install it interactively:
+
+```
+  Npcap is not installed.
+  RustMap requires Npcap for raw packet capture on Windows.
+  Npcap is free for personal use (up to 5 systems).
+
+  Download and install Npcap now? [Y/n]
+```
+
+If you accept, RustMap downloads the installer and launches the Npcap setup wizard. If the download fails, it opens the Npcap download page in your browser. You can also install Npcap manually from [npcap.com](https://npcap.com/#download) at any time.
+
+TCP Connect scans (`-sT`) do not require Npcap and work without it.
 
 ### `Packet.lib not found` / linker errors
 Ensure the Npcap SDK is extracted to `C:\npcap-sdk\` and that `build.bat` is used (it sets the `LIB` path).

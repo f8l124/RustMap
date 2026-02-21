@@ -66,6 +66,8 @@ Select a scan type with `-s TYPE`. Multiple types can be combined (e.g., `-s SU`
 
 If no scan type is specified, RustMap defaults to SYN scan when running with privileges, or TCP Connect when unprivileged.
 
+> **Windows:** Raw-socket scan types (all except `-sT`) require [Npcap](https://npcap.com/#download). If Npcap is not installed, RustMap will offer to download and install it on first run. TCP Connect scans (`-sT`) work without Npcap.
+
 ```bash
 # SYN + UDP scan
 rustmap -s SU -p 22,80,443,53 target

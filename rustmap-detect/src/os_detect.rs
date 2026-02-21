@@ -2,7 +2,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use rustmap_types::{
-    OsFingerprint, OsProbeResults, Port, PortState, TcpFingerprint, TcpOptionKind,
+    OsFingerprint, OsProbeResults, Port, PortState, ScanResult, TcpFingerprint, TcpOptionKind,
 };
 
 use crate::os_signatures::{OsSignature, OsSignatureDb};
@@ -87,6 +87,7 @@ impl OsDetector {
             return OsFingerprint {
                 os_family: None,
                 os_generation: None,
+                os_detail: None,
                 accuracy: None,
                 probe_results: probe_results.clone(),
             };
@@ -142,12 +143,14 @@ impl OsDetector {
             Some(m) if m.score as u8 >= MIN_CONFIDENCE => OsFingerprint {
                 os_family: Some(m.os_family),
                 os_generation: Some(m.os_generation),
+                os_detail: None,
                 accuracy: Some(m.score.min(100) as u8),
                 probe_results: probe_results.clone(),
             },
             _ => OsFingerprint {
                 os_family: None,
                 os_generation: None,
+                os_detail: None,
                 accuracy: None,
                 probe_results: probe_results.clone(),
             },
@@ -298,6 +301,13 @@ pub fn infer_os_from_services(ports: &[Port]) -> Option<OsFingerprint> {
     let max_votes = linux_count.max(windows_count).max(freebsd_count);
     let accuracy = (40 + max_votes * 10).min(70) as u8;
 
+    // Try to extract distribution/edition detail from service banners
+    let detail = if os_family == "Windows" {
+        infer_windows_detail(ports, if os_generation.is_empty() { None } else { Some(os_generation) })
+    } else {
+        infer_distro_from_services(ports)
+    };
+
     Some(OsFingerprint {
         os_family: Some(os_family.to_string()),
         os_generation: if os_generation.is_empty() {
@@ -305,9 +315,325 @@ pub fn infer_os_from_services(ports: &[Port]) -> Option<OsFingerprint> {
         } else {
             Some(os_generation.to_string())
         },
+        os_detail: detail,
         accuracy: Some(accuracy),
         probe_results: OsProbeResults::default(),
     })
+}
+
+/// Infer Linux distribution from service banners.
+///
+/// Maps OpenSSH versions and vendor comments to specific distro releases.
+/// SSH banner format: `SSH-2.0-OpenSSH_<version> <vendor-comment>`
+/// Common vendor comments:
+///   - `Ubuntu-6ubuntu0.2` → Ubuntu
+///   - `Debian-2+deb12u3`  → Debian
+///   - `(no comment)`      → RHEL/CentOS/Fedora (no comment is typical)
+fn infer_distro_from_services(ports: &[Port]) -> Option<String> {
+    for port in ports {
+        if port.state != PortState::Open {
+            continue;
+        }
+        let Some(ref si) = port.service_info else {
+            continue;
+        };
+        if si.product.as_deref() != Some("OpenSSH") {
+            continue;
+        }
+        let version = si.version.as_deref().unwrap_or("");
+        let comment = si.info.as_deref().unwrap_or("");
+        let comment_lower = comment.to_lowercase();
+
+        // Parse vendor comment for distro hint
+        if comment_lower.starts_with("ubuntu") {
+            return Some(map_openssh_to_ubuntu(version));
+        } else if comment_lower.starts_with("debian") || comment_lower.contains("+deb") {
+            return Some(map_openssh_to_debian(version));
+        } else if comment_lower.contains("el7") || comment_lower.contains("el8") || comment_lower.contains("el9") {
+            return Some(format!("RHEL/CentOS (OpenSSH {})", version));
+        }
+
+        // No vendor comment — fall back to version-only mapping
+        if comment.is_empty()
+            && let Some(distro) = map_openssh_version_only(version)
+        {
+            return Some(distro);
+        }
+    }
+    None
+}
+
+/// Map OpenSSH version to Ubuntu release when Ubuntu vendor comment is present.
+fn map_openssh_to_ubuntu(version: &str) -> String {
+    let base = match version {
+        v if v.starts_with("9.9") => "Ubuntu 25.04",
+        v if v.starts_with("9.7") => "Ubuntu 24.10",
+        v if v.starts_with("9.6") => "Ubuntu 24.04",
+        v if v.starts_with("9.3") => "Ubuntu 23.10",
+        v if v.starts_with("9.0") => "Ubuntu 23.04",
+        v if v.starts_with("8.9") => "Ubuntu 22.04",
+        v if v.starts_with("8.4") => "Ubuntu 21.10",
+        v if v.starts_with("8.2") => "Ubuntu 20.04",
+        v if v.starts_with("7.6") => "Ubuntu 18.04",
+        v if v.starts_with("7.2") => "Ubuntu 16.04",
+        _ => return format!("Ubuntu (OpenSSH {})", version),
+    };
+    base.to_string()
+}
+
+/// Map OpenSSH version to Debian release when Debian vendor comment is present.
+fn map_openssh_to_debian(version: &str) -> String {
+    let base = match version {
+        v if v.starts_with("9.7") || v.starts_with("9.8") || v.starts_with("9.9") => "Debian 13 (Trixie)",
+        v if v.starts_with("9.2") => "Debian 12 (Bookworm)",
+        v if v.starts_with("8.4") => "Debian 11 (Bullseye)",
+        v if v.starts_with("7.9") => "Debian 10 (Buster)",
+        v if v.starts_with("7.4") => "Debian 9 (Stretch)",
+        _ => return format!("Debian (OpenSSH {})", version),
+    };
+    base.to_string()
+}
+
+/// Fallback: map OpenSSH version when no vendor comment is present.
+/// Only returns a match when the mapping is unambiguous.
+fn map_openssh_version_only(version: &str) -> Option<String> {
+    // Without vendor comment, we can't distinguish Ubuntu from Debian etc.
+    // Only map versions unique to specific distros.
+    match version {
+        v if v.starts_with("7.4") && !v.contains('p') => {
+            // OpenSSH 7.4 without 'p' is RHEL/CentOS 7
+            Some("RHEL/CentOS 7".to_string())
+        }
+        _ => None,
+    }
+}
+
+/// Infer Windows version detail from service banners (IIS, MSSQL, HTTPAPI).
+///
+/// Uses product name and version from detected services to map to specific
+/// Windows editions. The `generation` from TCP fingerprinting (e.g., "10",
+/// "Server 2019/2022") helps disambiguate when multiple Windows versions
+/// share the same service version (e.g., IIS 10.0 ships with Win 10/11/Server 2016+).
+fn infer_windows_detail(ports: &[Port], generation: Option<&str>) -> Option<String> {
+    let win_gen = generation.unwrap_or("");
+
+    for port in ports {
+        if port.state != PortState::Open {
+            continue;
+        }
+        let Some(ref si) = port.service_info else {
+            continue;
+        };
+        let product = si.product.as_deref().unwrap_or("");
+        let version = si.version.as_deref().unwrap_or("");
+        let product_lower = product.to_lowercase();
+
+        // IIS version → Windows Server version (strongest signal)
+        if product_lower.contains("iis") && !version.is_empty() {
+            return Some(map_iis_to_windows(version, win_gen));
+        }
+
+        // Microsoft HTTPAPI (HTTP.SYS) — Windows only, but no version differentiation
+        if product_lower.contains("httpapi") {
+            return Some(format_windows_from_generation(win_gen));
+        }
+    }
+
+    // No service banner signal — still format from TCP generation if specific enough
+    if !win_gen.is_empty() && win_gen != "10/11" {
+        return Some(format_windows_from_generation(win_gen));
+    }
+
+    None
+}
+
+/// Map IIS version to Windows edition, using TCP fingerprint generation for disambiguation.
+fn map_iis_to_windows(iis_version: &str, generation: &str) -> String {
+    match iis_version {
+        "6.0" => "Windows Server 2003".to_string(),
+        "7.0" => {
+            if generation.contains("Server") {
+                "Windows Server 2008".to_string()
+            } else {
+                "Windows Vista / Server 2008".to_string()
+            }
+        }
+        "7.5" => {
+            if generation.contains("Server") {
+                "Windows Server 2008 R2".to_string()
+            } else {
+                "Windows 7 / Server 2008 R2".to_string()
+            }
+        }
+        "8.0" => {
+            if generation.contains("Server") {
+                "Windows Server 2012".to_string()
+            } else {
+                "Windows 8 / Server 2012".to_string()
+            }
+        }
+        "8.5" => {
+            if generation.contains("Server") {
+                "Windows Server 2012 R2".to_string()
+            } else {
+                "Windows 8.1 / Server 2012 R2".to_string()
+            }
+        }
+        v if v.starts_with("10.") => {
+            // IIS 10.0 ships with Win 10, Win 11, Server 2016, 2019, 2022
+            match generation {
+                "10" => "Windows 10 (IIS 10.0)".to_string(),
+                "11" => "Windows 11 (IIS 10.0)".to_string(),
+                "Server 2016" => "Windows Server 2016".to_string(),
+                g if g.contains("2019") || g.contains("2022") => {
+                    format!("Windows {g}")
+                }
+                g if g.contains("Server") => format!("Windows {g} (IIS 10.0)"),
+                _ => "Windows 10+ / Server 2016+ (IIS 10.0)".to_string(),
+            }
+        }
+        _ => format!("Windows (IIS {iis_version})"),
+    }
+}
+
+/// Format a Windows detail string from the TCP fingerprint generation alone.
+fn format_windows_from_generation(generation: &str) -> String {
+    match generation {
+        "7" => "Windows 7".to_string(),
+        "8/8.1" => "Windows 8/8.1".to_string(),
+        "10" => "Windows 10".to_string(),
+        "11" => "Windows 11".to_string(),
+        g if g.starts_with("Server") => format!("Windows {g}"),
+        _ => format!("Windows {generation}"),
+    }
+}
+
+/// Enrich an existing OS fingerprint with distribution detail from service banners.
+///
+/// Called after TCP-based OS detection to add distro-level specificity.
+/// Only adds `os_detail` — does not modify the primary OS family/generation.
+pub fn enrich_os_from_services(os_fp: &mut OsFingerprint, ports: &[Port]) {
+    if os_fp.os_detail.is_some() {
+        return; // Already populated
+    }
+    let family = os_fp.os_family.as_deref().unwrap_or("");
+    if family == "Windows" {
+        if let Some(detail) = infer_windows_detail(ports, os_fp.os_generation.as_deref()) {
+            os_fp.os_detail = Some(detail);
+        }
+    } else if let Some(distro) = infer_distro_from_services(ports) {
+        os_fp.os_detail = Some(distro);
+    }
+}
+
+/// Enrich OS fingerprint from NSE script results (call after scripts run).
+///
+/// Parses structured output from scripts like smb-os-discovery to extract
+/// SMB dialect info that can narrow down the Windows version.
+pub fn enrich_os_from_scripts(result: &mut ScanResult) {
+    for host in &mut result.hosts {
+        let Some(ref mut os_fp) = host.os_fingerprint else {
+            continue;
+        };
+        if os_fp.os_detail.is_some() {
+            continue;
+        }
+        let family = os_fp.os_family.as_deref().unwrap_or("");
+        if family != "Windows" {
+            continue;
+        }
+        if let Some(detail) = infer_windows_from_scripts(&host.ports, os_fp.os_generation.as_deref()) {
+            os_fp.os_detail = Some(detail);
+        }
+    }
+}
+
+/// Infer Windows version detail from SMB/RDP script results on ports.
+fn infer_windows_from_scripts(ports: &[Port], generation: Option<&str>) -> Option<String> {
+    let mut smb_dialect: Option<&str> = None;
+
+    for port in ports {
+        if port.state != PortState::Open {
+            continue;
+        }
+        for sr in &port.script_results {
+            if sr.id == "smb-os-discovery" || sr.id == "smb-protocols" {
+                // Parse "Dialect: SMB X.Y.Z" from script output
+                if let Some(d) = parse_smb_dialect(&sr.output) {
+                    smb_dialect = Some(d);
+                }
+            }
+        }
+    }
+
+    let dialect = smb_dialect?;
+    Some(map_smb_dialect_to_windows(dialect, generation))
+}
+
+/// Parse SMB dialect string from script output.
+/// Looks for "Dialect: SMB X.Y.Z" pattern.
+fn parse_smb_dialect(output: &str) -> Option<&str> {
+    for segment in output.split(';') {
+        let trimmed = segment.trim();
+        if let Some(rest) = trimmed.strip_prefix("Dialect: SMB ") {
+            return Some(rest.trim());
+        }
+    }
+    None
+}
+
+/// Map SMB dialect version to Windows version string.
+fn map_smb_dialect_to_windows(dialect: &str, generation: Option<&str>) -> String {
+    let win_gen = generation.unwrap_or("");
+    match dialect {
+        "2.0.2" => {
+            if win_gen.contains("Server") {
+                "Windows Server 2008".to_string()
+            } else {
+                "Windows Vista".to_string()
+            }
+        }
+        "2.1" => {
+            if win_gen.contains("Server") {
+                "Windows Server 2008 R2".to_string()
+            } else {
+                "Windows 7".to_string()
+            }
+        }
+        "3.0" => {
+            if win_gen.contains("Server") {
+                "Windows Server 2012".to_string()
+            } else {
+                "Windows 8".to_string()
+            }
+        }
+        "3.0.2" => {
+            if win_gen.contains("Server") {
+                "Windows Server 2012 R2".to_string()
+            } else {
+                "Windows 8.1".to_string()
+            }
+        }
+        "3.1.1" => {
+            // Most specific we can get from SMB alone for modern Windows
+            match win_gen {
+                "10" => "Windows 10".to_string(),
+                "11" => "Windows 11".to_string(),
+                "Server 2016" => "Windows Server 2016".to_string(),
+                g if g.contains("2019") || g.contains("2022") => {
+                    format!("Windows {g}")
+                }
+                _ => {
+                    if win_gen.contains("Server") {
+                        "Windows Server 2016+".to_string()
+                    } else {
+                        "Windows 10+".to_string()
+                    }
+                }
+            }
+        }
+        _ => format!("Windows (SMB {dialect})"),
+    }
 }
 
 /// Score a fingerprint against a single active signature (0-100).

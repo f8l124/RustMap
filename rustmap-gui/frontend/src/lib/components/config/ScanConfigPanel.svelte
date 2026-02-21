@@ -1,10 +1,12 @@
 <script lang="ts">
+  import PresetSelector from "./PresetSelector.svelte";
   import TargetInput from "./TargetInput.svelte";
   import PortSelector from "./PortSelector.svelte";
   import ScanTypeSelector from "./ScanTypeSelector.svelte";
   import TimingSelector from "./TimingSelector.svelte";
   import FeatureToggles from "./FeatureToggles.svelte";
   import DiscoveryConfig from "./DiscoveryConfig.svelte";
+  import ScriptConfig from "./ScriptConfig.svelte";
   import AdvancedOptions from "./AdvancedOptions.svelte";
   import ScanActions from "./ScanActions.svelte";
   import { scanConfig } from "../../stores/scanConfig.svelte";
@@ -20,6 +22,7 @@
 </script>
 
 <section class="config-panel">
+  <PresetSelector />
   <div class="config-grid">
     <TargetInput />
     <div class="config-row">
@@ -29,6 +32,7 @@
     </div>
     <FeatureToggles />
     <DiscoveryConfig />
+    <ScriptConfig />
     <AdvancedOptions />
   </div>
   {#if showPrivilegeWarning}

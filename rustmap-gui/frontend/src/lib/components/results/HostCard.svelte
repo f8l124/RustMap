@@ -80,7 +80,7 @@
       {/if}
 
       <div class="host-meta text-muted">
-        <span>Scan duration: {formatDuration(hostResult.scan_duration)}</span>
+        <span>Port scan: {formatDuration(hostResult.scan_duration)}</span>
       </div>
     </div>
   {/if}

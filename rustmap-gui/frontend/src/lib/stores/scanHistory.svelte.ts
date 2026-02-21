@@ -1,10 +1,26 @@
 import type { ScanHistoryEntry } from "../types";
+import { clearScanHistory } from "../tauri/commands";
 
 class ScanHistoryStore {
   entries = $state<ScanHistoryEntry[]>([]);
 
   set(entries: ScanHistoryEntry[]) {
     this.entries = entries;
+  }
+
+  addEntry(entry: ScanHistoryEntry) {
+    this.entries = [entry, ...this.entries];
+  }
+
+  async clear(): Promise<boolean> {
+    try {
+      await clearScanHistory();
+      this.entries = [];
+      return true;
+    } catch (err) {
+      console.error("Failed to clear scan history:", err);
+      return false;
+    }
   }
 
   get latest(): ScanHistoryEntry | null {

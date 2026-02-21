@@ -150,6 +150,10 @@ pub struct OsFingerprint {
     pub os_family: Option<String>,
     /// OS generation/version (e.g., "4.x-5.x", "10/11", "12-15").
     pub os_generation: Option<String>,
+    /// Distribution-level detail (e.g., "Ubuntu 24.04", "Debian 12").
+    /// Populated from service banner analysis (SSH version → distro mapping).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub os_detail: Option<String>,
     /// Confidence percentage (0-100).
     pub accuracy: Option<u8>,
     /// Raw probe results used for the detection.

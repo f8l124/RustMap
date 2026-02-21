@@ -1,6 +1,5 @@
 import type { HostScanResult, HostStatus, Port, PortState } from "../types";
 import { scanState } from "./scanState.svelte";
-import { scanConfig } from "./scanConfig.svelte";
 
 class ResultFilterStore {
   searchQuery = $state("");
@@ -35,12 +34,15 @@ class ResultFilterStore {
       );
     }
 
-    // Filter hosts by whether they have any visible ports
-    hosts = hosts.filter((h) => {
-      // Hosts with no ports pass through (e.g., ping-only results)
-      if (h.ports.length === 0) return true;
-      return this.filteredPorts(h).length > 0;
-    });
+    // Filter hosts by whether they have any visible ports, but only
+    // when the user has explicitly selected state filters. The default
+    // "open only" view should still show hosts that have no open ports.
+    if (this.stateFilters.size > 0) {
+      hosts = hosts.filter((h) => {
+        if (h.ports.length === 0) return true;
+        return this.filteredPorts(h).length > 0;
+      });
+    }
 
     return hosts;
   }
@@ -51,10 +53,6 @@ class ResultFilterStore {
 
   get totalCount(): number {
     return scanState.hostResults.length;
-  }
-
-  get hasUserSpecifiedPorts(): boolean {
-    return scanConfig.ports.trim().length > 0;
   }
 
   filteredPorts(host: HostScanResult): Port[] {
@@ -70,14 +68,13 @@ class ResultFilterStore {
     if (this.stateFilters.size > 0) {
       // Explicit state filters active — show only matching states
       ports = ports.filter((p) => this.stateFilters.has(p.state));
-    } else if (!this.hasUserSpecifiedPorts) {
-      // No state filters AND user didn't specify explicit ports —
-      // default to showing only open ports
+    } else {
+      // No state filters — default to showing only open ports.
+      // Users can click Closed/Filtered chips to see those states.
       ports = ports.filter(
         (p) => p.state === "open" || p.state === "open|filtered",
       );
     }
-    // If user specified explicit ports and no state filter — show all states
 
     return ports;
   }

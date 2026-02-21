@@ -7,7 +7,7 @@ use rustmap_output::{
     GrepableFormatter, JsonFormatter, OutputFormatter, StdoutFormatter, XmlFormatter,
 };
 use rustmap_packet::check_privileges;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, State};
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
@@ -60,7 +60,174 @@ pub struct PrivilegeInfo {
     pub npcap_installed: bool,
 }
 
+// ----- Script info -----
+
+#[derive(Clone, Serialize)]
+pub struct ScriptInfo {
+    id: String,
+    description: String,
+    categories: Vec<String>,
+    language: String,
+}
+
+// ----- Preset info -----
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct PresetInfo {
+    pub name: String,
+    pub targets: String,
+    pub scan_type: String,
+    pub port_summary: String,
+}
+
+// ----- Helpers -----
+
+fn gui_presets_dir() -> std::path::PathBuf {
+    let base = std::env::var("APPDATA").unwrap_or_else(|_| {
+        std::env::var("HOME")
+            .map(|h| format!("{h}/.config"))
+            .unwrap_or_else(|_| ".".to_string())
+    });
+    std::path::PathBuf::from(base)
+        .join("rustmap")
+        .join("gui-presets")
+}
+
+fn validate_preset_name(name: &str) -> Result<(), String> {
+    if name.is_empty() {
+        return Err("preset name cannot be empty".into());
+    }
+    if name.len() > 100 {
+        return Err("preset name too long (max 100 characters)".into());
+    }
+    if !name
+        .chars()
+        .all(|c| c.is_alphanumeric() || c == '-' || c == '_' || c == ' ')
+    {
+        return Err(
+            "preset name may only contain letters, numbers, hyphens, underscores, and spaces"
+                .into(),
+        );
+    }
+    if name.contains("..") {
+        return Err("preset name cannot contain '..'".into());
+    }
+    Ok(())
+}
+
+fn preset_filename(name: &str) -> String {
+    name.replace(' ', "_")
+}
+
+fn summarize_config(config: &GuiScanConfig) -> PresetInfo {
+    let targets = if config.targets.len() == 1 {
+        config.targets[0].clone()
+    } else if config.targets.is_empty() {
+        "no targets".to_string()
+    } else {
+        format!("{} targets", config.targets.len())
+    };
+    let port_summary = match &config.ports {
+        Some(p) if p.len() <= 30 => p.clone(),
+        Some(p) => format!("{}...", &p[..20]),
+        None => "top 1000".to_string(),
+    };
+    let scan_type = match config.scan_type.as_str() {
+        "T" => "TCP Connect",
+        "S" => "TCP SYN",
+        "U" => "UDP",
+        "F" => "TCP FIN",
+        "N" => "TCP Null",
+        "X" => "TCP Xmas",
+        "A" => "TCP ACK",
+        "W" => "TCP Window",
+        "M" => "TCP Maimon",
+        "Z" => "SCTP Init",
+        other => other,
+    };
+    PresetInfo {
+        name: String::new(),
+        targets,
+        scan_type: scan_type.to_string(),
+        port_summary,
+    }
+}
+
+/// Parse script args string "key1=val1,key2=val2" into key-value pairs.
+fn parse_script_args(s: Option<&str>) -> Vec<(String, String)> {
+    s.map(|s| {
+        s.split(',')
+            .filter_map(|pair| {
+                let mut parts = pair.splitn(2, '=');
+                let key = parts.next()?.trim();
+                let val = parts.next()?.trim();
+                if key.is_empty() {
+                    None
+                } else {
+                    Some((key.to_string(), val.to_string()))
+                }
+            })
+            .collect()
+    })
+    .unwrap_or_default()
+}
+
 // ----- Commands -----
+
+fn script_meta_to_info(s: &rustmap_script::ScriptMeta) -> ScriptInfo {
+    ScriptInfo {
+        id: s.id.clone(),
+        description: s.description.clone(),
+        categories: s.categories.iter().map(|c| c.to_string()).collect(),
+        language: match s.language {
+            rustmap_script::ScriptLanguage::Lua => "lua".to_string(),
+            rustmap_script::ScriptLanguage::Python => "python".to_string(),
+            #[allow(unreachable_patterns)]
+            _ => "unknown".to_string(),
+        },
+    }
+}
+
+#[tauri::command]
+pub async fn list_scripts() -> Result<Vec<ScriptInfo>, String> {
+    let dirs = rustmap_script::find_script_dirs();
+    let mut discovery = rustmap_script::ScriptDiscovery::new(dirs);
+    let scripts = discovery.discover().map_err(|e| e.to_string())?;
+    Ok(scripts.iter().map(script_meta_to_info).collect())
+}
+
+/// Return the first existing script directory (for the file-picker default path).
+#[tauri::command]
+pub async fn get_scripts_dir() -> Option<String> {
+    // Runtime search (next to exe, CWD/scripts, CWD/rustmap-script/scripts)
+    if let Some(dir) = rustmap_script::find_script_dirs().into_iter().next() {
+        return Some(dir.to_string_lossy().into_owned());
+    }
+    // Development fallback: resolve from workspace root at compile time.
+    // CARGO_MANIFEST_DIR points to rustmap-gui/; the scripts live in
+    // the sibling crate rustmap-script/scripts/.
+    let workspace_scripts = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .map(|p| p.join("rustmap-script").join("scripts"));
+    workspace_scripts
+        .filter(|p| p.is_dir())
+        .map(|p| p.to_string_lossy().into_owned())
+}
+
+/// Parse metadata from user-selected script files on disk.
+#[tauri::command]
+pub async fn parse_custom_scripts(paths: Vec<String>) -> Result<Vec<ScriptInfo>, String> {
+    let discovery = rustmap_script::ScriptDiscovery::new(vec![]);
+    let mut infos = Vec::new();
+    for p in &paths {
+        let path = std::path::Path::new(p);
+        match discovery.parse_file(path) {
+            Ok(meta) => infos.push(script_meta_to_info(&meta)),
+            Err(e) => return Err(format!("failed to parse {}: {e}", path.display())),
+        }
+    }
+    Ok(infos)
+}
 
 #[tauri::command]
 pub async fn start_scan(
@@ -68,6 +235,12 @@ pub async fn start_scan(
     state: State<'_, Arc<ScanState>>,
     config: GuiScanConfig,
 ) -> Result<String, String> {
+    // Capture script config before consuming config
+    let script_enabled = config.script_enabled;
+    let script_patterns = config.scripts.clone();
+    let script_args_str = config.script_args.clone();
+    let custom_script_paths = config.custom_script_paths.clone();
+
     let scan_config = config.into_scan_config()?;
 
     let scan_id = format!("scan-{}", uuid::Uuid::new_v4());
@@ -126,7 +299,75 @@ pub async fn start_scan(
                     let result = *result;
                     let finished_at = now_ms();
 
-                    // Save to persistent database
+                    // Run scripts if enabled (via spawn_blocking since ScriptRunner is sync)
+                    let has_scripts = !script_patterns.is_empty()
+                        || !custom_script_paths.is_empty();
+                    let run_scripts = script_enabled && has_scripts;
+                    let patterns = script_patterns.clone();
+                    let custom_paths = custom_script_paths.clone();
+                    let args_str = script_args_str.clone();
+                    let result = if run_scripts {
+                        let script_args = parse_script_args(args_str.as_deref());
+                        let script_config = rustmap_types::ScriptConfig {
+                            enabled: true,
+                            scripts: patterns,
+                            script_args,
+                        };
+                        match tokio::task::spawn_blocking(move || {
+                            let mut result = result;
+                            let dirs = rustmap_script::find_script_dirs();
+                            let mut discovery = rustmap_script::ScriptDiscovery::new(dirs);
+                            let _ = discovery.discover();
+
+                            let mut resolved =
+                                discovery.resolve_scripts(&script_config.scripts);
+
+                            // Append user-browsed custom scripts
+                            for p in &custom_paths {
+                                let path = std::path::Path::new(p);
+                                match discovery.parse_file(path) {
+                                    Ok(meta) => resolved.push(meta),
+                                    Err(e) => {
+                                        eprintln!(
+                                            "warning: skipping custom script {}: {e}",
+                                            path.display()
+                                        );
+                                    }
+                                }
+                            }
+
+                            if !resolved.is_empty() {
+                                let runner = rustmap_script::ScriptRunner::new(
+                                    script_config,
+                                    resolved,
+                                );
+                                if let Err(e) = runner.run_all(&mut result) {
+                                    eprintln!("warning: script execution error: {e}");
+                                }
+                                rustmap_detect::enrich_os_from_scripts(&mut result);
+                            }
+                            result
+                        })
+                        .await
+                        {
+                            Ok(r) => r,
+                            Err(e) => {
+                                eprintln!("warning: script task panicked: {e}");
+                                let _ = app.emit(
+                                    "scan-error",
+                                    ScanErrorPayload {
+                                        scan_id: scan_id.clone(),
+                                        error: format!("script execution panicked: {e}"),
+                                    },
+                                );
+                                continue;
+                            }
+                        }
+                    } else {
+                        result
+                    };
+
+                    // Save to persistent database (includes script results)
                     {
                         let store = state_clone.store.lock().await;
                         if let Err(e) =
@@ -205,6 +446,16 @@ pub async fn delete_scan_history(
         .map_err(|e| format!("failed to delete scan: {e}"))
 }
 
+#[tauri::command]
+pub async fn clear_scan_history(
+    state: State<'_, Arc<ScanState>>,
+) -> Result<usize, String> {
+    let store = state.store.lock().await;
+    store
+        .clear_all_scans()
+        .map_err(|e| format!("failed to clear history: {e}"))
+}
+
 /// Format a scan result using the specified output format.
 ///
 /// Extracted from `export_results` for testability.
@@ -241,6 +492,23 @@ pub async fn export_results(
 }
 
 #[tauri::command]
+pub async fn export_to_file(
+    state: State<'_, Arc<ScanState>>,
+    scan_id: String,
+    format: String,
+    path: String,
+) -> Result<(), String> {
+    let store = state.store.lock().await;
+    let result = store
+        .load_scan(&scan_id)
+        .map_err(|e| format!("failed to load scan: {e}"))?
+        .ok_or_else(|| format!("scan not found: {scan_id}"))?;
+
+    let output = format_scan_result(&result, &format)?;
+    std::fs::write(&path, output).map_err(|e| format!("failed to write file: {e}"))
+}
+
+#[tauri::command]
 pub fn check_privileges_cmd() -> PrivilegeInfo {
     let level = check_privileges();
     PrivilegeInfo {
@@ -251,6 +519,118 @@ pub fn check_privileges_cmd() -> PrivilegeInfo {
         #[cfg(not(windows))]
         npcap_installed: true, // Not applicable on non-Windows
     }
+}
+
+// ----- Preset commands -----
+
+#[tauri::command]
+pub async fn list_presets() -> Result<Vec<PresetInfo>, String> {
+    let dir = gui_presets_dir();
+    if !dir.exists() {
+        return Ok(vec![]);
+    }
+    let entries =
+        std::fs::read_dir(&dir).map_err(|e| format!("failed to read presets dir: {e}"))?;
+    let mut presets = Vec::new();
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().is_some_and(|ext| ext == "json") {
+            let name = path
+                .file_stem()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .replace('_', " ");
+            match std::fs::read_to_string(&path) {
+                Ok(content) => {
+                    if let Ok(config) = serde_json::from_str::<GuiScanConfig>(&content) {
+                        let mut info = summarize_config(&config);
+                        info.name = name;
+                        presets.push(info);
+                    }
+                }
+                Err(e) => {
+                    eprintln!("warning: skipping preset {}: {e}", path.display());
+                }
+            }
+        }
+    }
+    presets.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(presets)
+}
+
+#[tauri::command]
+pub async fn save_preset(name: String, config: GuiScanConfig) -> Result<(), String> {
+    validate_preset_name(&name)?;
+    let dir = gui_presets_dir();
+    std::fs::create_dir_all(&dir)
+        .map_err(|e| format!("failed to create presets directory: {e}"))?;
+    let filename = preset_filename(&name);
+    let path = dir.join(format!("{filename}.json"));
+    let json = serde_json::to_string_pretty(&config)
+        .map_err(|e| format!("failed to serialize preset: {e}"))?;
+    std::fs::write(&path, json).map_err(|e| format!("failed to save preset: {e}"))
+}
+
+#[tauri::command]
+pub async fn load_preset(name: String) -> Result<GuiScanConfig, String> {
+    validate_preset_name(&name)?;
+    let filename = preset_filename(&name);
+    let path = gui_presets_dir().join(format!("{filename}.json"));
+    let content =
+        std::fs::read_to_string(&path).map_err(|e| format!("preset '{name}' not found: {e}"))?;
+    serde_json::from_str(&content).map_err(|e| format!("failed to parse preset '{name}': {e}"))
+}
+
+#[tauri::command]
+pub async fn delete_preset(name: String) -> Result<(), String> {
+    validate_preset_name(&name)?;
+    let filename = preset_filename(&name);
+    let path = gui_presets_dir().join(format!("{filename}.json"));
+    if path.exists() {
+        std::fs::remove_file(&path).map_err(|e| format!("failed to delete preset: {e}"))?;
+    }
+    Ok(())
+}
+
+// ----- Import command -----
+
+#[tauri::command]
+pub async fn import_scan_from_file(
+    state: State<'_, Arc<ScanState>>,
+    path: String,
+) -> Result<ScanSummary, String> {
+    let content =
+        std::fs::read_to_string(&path).map_err(|e| format!("failed to read file: {e}"))?;
+
+    let result: rustmap_types::ScanResult = serde_json::from_str(&content)
+        .map_err(|e| format!("failed to parse scan result (only JSON format is supported): {e}"))?;
+
+    let scan_id = format!("import-{}", uuid::Uuid::new_v4());
+    let now = now_ms();
+
+    let started_at = result
+        .start_time
+        .and_then(|st| st.duration_since(UNIX_EPOCH).ok())
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(now);
+    let finished_at =
+        started_at.saturating_add(result.total_duration.as_millis().min(u64::MAX as u128) as u64);
+
+    let store = state.store.lock().await;
+    store
+        .save_scan(&scan_id, &result, started_at, finished_at, None)
+        .map_err(|e| format!("failed to save imported scan: {e}"))?;
+
+    Ok(ScanSummary {
+        scan_id,
+        started_at,
+        finished_at,
+        scan_type: format!("{}", result.scan_type),
+        num_hosts: result.hosts.len(),
+        num_services: result.num_services,
+        total_duration_ms: result.total_duration.as_millis().min(u64::MAX as u128) as u64,
+        command_args: result.command_args,
+    })
 }
 
 #[cfg(test)]

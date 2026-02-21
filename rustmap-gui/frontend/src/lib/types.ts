@@ -49,6 +49,7 @@ export interface Port {
 export interface OsFingerprint {
   os_family: string | null;
   os_generation: string | null;
+  os_detail: string | null;
   accuracy: number | null;
   probe_results: OsProbeResults;
 }
@@ -206,6 +207,17 @@ export interface GuiScanConfig {
   pre_resolved_up: string | null;
   payload_type: string;
   payload_value: string | null;
+  script_enabled: boolean;
+  scripts: string[];
+  script_args: string | null;
+  custom_script_paths: string[];
+}
+
+export interface ScriptInfo {
+  id: string;
+  description: string;
+  categories: string[];
+  language: string;
 }
 
 export interface PrivilegeInfo {
@@ -271,4 +283,11 @@ export interface ScanCompletePayload {
 export interface ScanErrorPayload {
   scan_id: string;
   error: string;
+}
+
+export interface PresetInfo {
+  name: string;
+  targets: string;
+  scan_type: string;
+  port_summary: string;
 }

@@ -21,6 +21,7 @@ cloud = ["cloud-aws", "cloud-azure", "cloud-gcp"]
 [dependencies]
 rustmap-types      = { workspace = true }
 rustmap-core       = { workspace = true }
+rustmap-detect     = { workspace = true }
 rustmap-packet     = { workspace = true }
 rustmap-output     = { workspace = true }
 rustmap-script     = { workspace = true }

@@ -23,6 +23,9 @@
         <span class="os-accuracy mono text-muted">{fingerprint.accuracy}%</span>
       {/if}
     </div>
+    {#if fingerprint.os_detail}
+      <span class="os-detail text-muted">{fingerprint.os_detail}</span>
+    {/if}
   </div>
 {/if}
 
@@ -54,5 +57,10 @@
 
   .os-accuracy {
     font-size: 12px;
+  }
+
+  .os-detail {
+    font-size: 12px;
+    font-style: italic;
   }
 </style>
