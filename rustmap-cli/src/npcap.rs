@@ -50,12 +50,10 @@ pub fn ensure_npcap() -> Result<(), String> {
 
     let response = response.trim().to_lowercase();
     if response == "n" || response == "no" {
-        return Err(
-            "Npcap is required for raw packet scans.\n\
+        return Err("Npcap is required for raw packet scans.\n\
              Download: https://npcap.com/#download\n\
              Or use -sT for TCP Connect scan (no Npcap needed)."
-                .into(),
-        );
+            .into());
     }
 
     // Try direct download first, fall back to opening browser
@@ -93,11 +91,9 @@ fn run_installer(installer_path: &Path) -> Result<(), String> {
                 eprintln!();
                 Ok(())
             } else {
-                Err(
-                    "Npcap installer finished but wpcap.dll was not found.\n\
+                Err("Npcap installer finished but wpcap.dll was not found.\n\
                      Please try reinstalling from https://npcap.com/#download"
-                        .into(),
-                )
+                    .into())
             }
         }
         Ok(s) => {
@@ -123,7 +119,13 @@ fn download_installer(dest: &Path) -> Result<(), String> {
     );
 
     let status = std::process::Command::new("powershell.exe")
-        .args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", &ps_cmd])
+        .args([
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            &ps_cmd,
+        ])
         .status()
         .map_err(|e| format!("could not run PowerShell: {e}"))?;
 
