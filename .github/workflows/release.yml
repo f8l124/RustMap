@@ -107,10 +107,11 @@ jobs:
           path: target/release/rustmap
           if-no-files-found: error
 
-  # ─── GUI Builds ───────────────────────────────────────────────
+  # ─── GUI Builds (depend on CLI for sidecar bundling) ─────────
 
   gui-windows:
     name: GUI Installer (Windows)
+    needs: cli-windows
     runs-on: windows-latest
 
     env:
@@ -160,9 +161,19 @@ jobs:
         working-directory: rustmap-gui/frontend
         run: npm run build
 
+      - name: Download CLI binary for sidecar
+        uses: actions/download-artifact@v4
+        with:
+          name: rustmap-windows-x86_64
+          path: rustmap-gui/binaries
+
+      - name: Prepare CLI sidecar
+        shell: bash
+        run: mv rustmap-gui/binaries/rustmap.exe rustmap-gui/binaries/rustmap-x86_64-pc-windows-msvc.exe
+
       - name: Build GUI installer
         working-directory: rustmap-gui
-        run: cargo tauri build
+        run: cargo tauri build --bundles nsis
 
       - name: Upload GUI installer
         uses: actions/upload-artifact@v4
@@ -180,6 +191,7 @@ jobs:
 
   gui-linux:
     name: GUI (Linux x86_64)
+    needs: cli-linux
     runs-on: ubuntu-latest
 
     steps:
@@ -220,9 +232,20 @@ jobs:
         working-directory: rustmap-gui/frontend
         run: npm run build
 
+      - name: Download CLI binary for sidecar
+        uses: actions/download-artifact@v4
+        with:
+          name: rustmap-linux-x86_64
+          path: rustmap-gui/binaries
+
+      - name: Prepare CLI sidecar
+        run: |
+          mv rustmap-gui/binaries/rustmap rustmap-gui/binaries/rustmap-x86_64-unknown-linux-gnu
+          chmod +x rustmap-gui/binaries/rustmap-x86_64-unknown-linux-gnu
+
       - name: Build GUI bundle
         working-directory: rustmap-gui
-        run: cargo tauri build
+        run: cargo tauri build --bundles deb,appimage
 
       - name: Upload GUI AppImage
         uses: actions/upload-artifact@v4
@@ -240,6 +263,7 @@ jobs:
 
   gui-macos-arm:
     name: GUI (macOS arm64)
+    needs: cli-macos-arm
     runs-on: macos-latest
 
     steps:
@@ -268,9 +292,20 @@ jobs:
         working-directory: rustmap-gui/frontend
         run: npm run build
 
+      - name: Download CLI binary for sidecar
+        uses: actions/download-artifact@v4
+        with:
+          name: rustmap-macos-arm64
+          path: rustmap-gui/binaries
+
+      - name: Prepare CLI sidecar
+        run: |
+          mv rustmap-gui/binaries/rustmap rustmap-gui/binaries/rustmap-aarch64-apple-darwin
+          chmod +x rustmap-gui/binaries/rustmap-aarch64-apple-darwin
+
       - name: Build GUI bundle
         working-directory: rustmap-gui
-        run: cargo tauri build
+        run: cargo tauri build --bundles dmg
 
       - name: Upload GUI dmg
         uses: actions/upload-artifact@v4
@@ -311,15 +346,15 @@ jobs:
         run: |
           mkdir -p release-assets
 
-          # CLI binaries
+          # CLI-only binaries (standalone downloads)
           cp artifacts/rustmap-windows-x86_64/rustmap.exe \
-             release-assets/rustmap-windows-x86_64.exe
+             release-assets/rustmap-cli-windows-x86_64.exe
           cp artifacts/rustmap-linux-x86_64/rustmap \
-             release-assets/rustmap-linux-x86_64
+             release-assets/rustmap-cli-linux-x86_64
           cp artifacts/rustmap-macos-arm64/rustmap \
-             release-assets/rustmap-macos-arm64
+             release-assets/rustmap-cli-macos-arm64
 
-          # GUI installers — Windows
+          # GUI installers — Windows (includes CLI via sidecar)
           cp artifacts/rustmap-gui-windows-x86_64/*.exe \
              release-assets/
 
@@ -344,9 +379,30 @@ jobs:
             cd ../..
           fi
 
-          # Make Linux/macOS binaries executable
-          chmod +x release-assets/rustmap-linux-x86_64
-          chmod +x release-assets/rustmap-macos-arm64
+          # Combined portable bundles (CLI + GUI together)
+          # Windows
+          mkdir -p bundle-windows
+          cp artifacts/rustmap-windows-x86_64/rustmap.exe bundle-windows/
+          cp artifacts/rustmap-gui-windows-portable/rustmap-gui.exe bundle-windows/ 2>/dev/null || true
+          if [ -f bundle-windows/rustmap-gui.exe ]; then
+            cd bundle-windows && zip ../release-assets/rustmap-bundle-windows-x86_64.zip * && cd ..
+          fi
+
+          # Linux
+          mkdir -p bundle-linux
+          cp artifacts/rustmap-linux-x86_64/rustmap bundle-linux/
+          chmod +x bundle-linux/rustmap
+          tar czf release-assets/rustmap-bundle-linux-x86_64.tar.gz -C bundle-linux .
+
+          # macOS
+          mkdir -p bundle-macos
+          cp artifacts/rustmap-macos-arm64/rustmap bundle-macos/
+          chmod +x bundle-macos/rustmap
+          tar czf release-assets/rustmap-bundle-macos-arm64.tar.gz -C bundle-macos .
+
+          # Make standalone CLI binaries executable
+          chmod +x release-assets/rustmap-cli-linux-x86_64
+          chmod +x release-assets/rustmap-cli-macos-arm64
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

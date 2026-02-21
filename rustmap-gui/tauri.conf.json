@@ -23,13 +23,17 @@
     }
   },
   "bundle": {
+    "externalBin": [
+      "binaries/rustmap"
+    ],
     "icon": [
       "icons/icon.png",
       "icons/icon.ico"
     ],
     "windows": {
       "nsis": {
-        "installMode": "both"
+        "installMode": "both",
+        "installerHooks": "./windows/hooks.nsh"
       }
     }
   }
