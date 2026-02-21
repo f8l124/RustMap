@@ -303,7 +303,14 @@ pub fn infer_os_from_services(ports: &[Port]) -> Option<OsFingerprint> {
 
     // Try to extract distribution/edition detail from service banners
     let detail = if os_family == "Windows" {
-        infer_windows_detail(ports, if os_generation.is_empty() { None } else { Some(os_generation) })
+        infer_windows_detail(
+            ports,
+            if os_generation.is_empty() {
+                None
+            } else {
+                Some(os_generation)
+            },
+        )
     } else {
         infer_distro_from_services(ports)
     };
@@ -349,7 +356,10 @@ fn infer_distro_from_services(ports: &[Port]) -> Option<String> {
             return Some(map_openssh_to_ubuntu(version));
         } else if comment_lower.starts_with("debian") || comment_lower.contains("+deb") {
             return Some(map_openssh_to_debian(version));
-        } else if comment_lower.contains("el7") || comment_lower.contains("el8") || comment_lower.contains("el9") {
+        } else if comment_lower.contains("el7")
+            || comment_lower.contains("el8")
+            || comment_lower.contains("el9")
+        {
             return Some(format!("RHEL/CentOS (OpenSSH {})", version));
         }
 
@@ -384,7 +394,9 @@ fn map_openssh_to_ubuntu(version: &str) -> String {
 /// Map OpenSSH version to Debian release when Debian vendor comment is present.
 fn map_openssh_to_debian(version: &str) -> String {
     let base = match version {
-        v if v.starts_with("9.7") || v.starts_with("9.8") || v.starts_with("9.9") => "Debian 13 (Trixie)",
+        v if v.starts_with("9.7") || v.starts_with("9.8") || v.starts_with("9.9") => {
+            "Debian 13 (Trixie)"
+        }
         v if v.starts_with("9.2") => "Debian 12 (Bookworm)",
         v if v.starts_with("8.4") => "Debian 11 (Bullseye)",
         v if v.starts_with("7.9") => "Debian 10 (Buster)",
@@ -542,7 +554,9 @@ pub fn enrich_os_from_scripts(result: &mut ScanResult) {
         if family != "Windows" {
             continue;
         }
-        if let Some(detail) = infer_windows_from_scripts(&host.ports, os_fp.os_generation.as_deref()) {
+        if let Some(detail) =
+            infer_windows_from_scripts(&host.ports, os_fp.os_generation.as_deref())
+        {
             os_fp.os_detail = Some(detail);
         }
     }

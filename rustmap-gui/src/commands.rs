@@ -300,8 +300,8 @@ pub async fn start_scan(
                     let finished_at = now_ms();
 
                     // Run scripts if enabled (via spawn_blocking since ScriptRunner is sync)
-                    let has_scripts = !script_patterns.is_empty()
-                        || !custom_script_paths.is_empty();
+                    let has_scripts =
+                        !script_patterns.is_empty() || !custom_script_paths.is_empty();
                     let run_scripts = script_enabled && has_scripts;
                     let patterns = script_patterns.clone();
                     let custom_paths = custom_script_paths.clone();
@@ -319,8 +319,7 @@ pub async fn start_scan(
                             let mut discovery = rustmap_script::ScriptDiscovery::new(dirs);
                             let _ = discovery.discover();
 
-                            let mut resolved =
-                                discovery.resolve_scripts(&script_config.scripts);
+                            let mut resolved = discovery.resolve_scripts(&script_config.scripts);
 
                             // Append user-browsed custom scripts
                             for p in &custom_paths {
@@ -337,10 +336,8 @@ pub async fn start_scan(
                             }
 
                             if !resolved.is_empty() {
-                                let runner = rustmap_script::ScriptRunner::new(
-                                    script_config,
-                                    resolved,
-                                );
+                                let runner =
+                                    rustmap_script::ScriptRunner::new(script_config, resolved);
                                 if let Err(e) = runner.run_all(&mut result) {
                                     eprintln!("warning: script execution error: {e}");
                                 }
@@ -447,9 +444,7 @@ pub async fn delete_scan_history(
 }
 
 #[tauri::command]
-pub async fn clear_scan_history(
-    state: State<'_, Arc<ScanState>>,
-) -> Result<usize, String> {
+pub async fn clear_scan_history(state: State<'_, Arc<ScanState>>) -> Result<usize, String> {
     let store = state.store.lock().await;
     store
         .clear_all_scans()
