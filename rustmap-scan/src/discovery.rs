@@ -71,11 +71,21 @@ impl HostDiscovery {
 
         // Run raw-packet discovery if privileged and methods exist.
         // Errors are logged but don't abort — HTTP discovery can still run.
+        // Hard cap prevents hanging on external hosts where raw probes are filtered.
         if privileged && !raw_methods.is_empty() {
-            match discover_privileged(&target_ips, &raw_methods, config, timing_template).await {
-                Ok(r) => results = r,
-                Err(e) => {
+            let raw_timeout = Duration::from_secs(5);
+            match tokio::time::timeout(
+                raw_timeout,
+                discover_privileged(&target_ips, &raw_methods, config, timing_template),
+            )
+            .await
+            {
+                Ok(Ok(r)) => results = r,
+                Ok(Err(e)) => {
                     warn!(error = %e, "raw packet discovery failed, continuing with other methods");
+                }
+                Err(_) => {
+                    warn!("raw packet discovery timed out after 5s, falling back to TCP connect");
                 }
             }
         }
@@ -104,14 +114,14 @@ impl HostDiscovery {
             }
         }
 
-        // TCP connect fallback: used when unprivileged, OR when raw discovery
-        // found zero live hosts (which may indicate a capture/driver issue rather
-        // than all hosts truly being down — common on Windows with Npcap).
+        // TCP connect fallback: used when unprivileged, when raw discovery found
+        // zero live hosts, or when raw discovery timed out (empty results while
+        // privileged). Common on Windows with Npcap for external hosts.
         let any_up = results.iter().any(|r| r.status == HostStatus::Up);
-        if results.is_empty() && !privileged {
-            info!("unprivileged — using TCP connect ping");
+        if results.is_empty() {
+            info!("no raw discovery results — using TCP connect ping");
             results = discover_unprivileged(&target_ips, config).await?;
-        } else if !any_up && !results.is_empty() && privileged {
+        } else if !any_up {
             warn!("raw discovery found no live hosts — falling back to TCP connect discovery");
             let connect_results = discover_unprivileged(&target_ips, config).await?;
             for cr in connect_results {

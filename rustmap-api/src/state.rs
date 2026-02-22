@@ -46,6 +46,9 @@ pub enum WsEvent {
     Warning {
         message: String,
     },
+    Log {
+        message: String,
+    },
 }
 
 /// Metadata for a running or recently-completed scan.

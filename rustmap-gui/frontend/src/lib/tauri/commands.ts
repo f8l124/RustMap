@@ -80,3 +80,7 @@ export async function importScanFromFile(
 ): Promise<ScanHistoryEntry> {
   return invoke<ScanHistoryEntry>("import_scan_from_file", { path });
 }
+
+export async function getAppVersion(): Promise<string> {
+  return invoke<string>("get_app_version");
+}

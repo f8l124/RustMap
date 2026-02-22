@@ -1,6 +1,7 @@
 <script lang="ts">
   import ScanConfigPanel from "../config/ScanConfigPanel.svelte";
   import ProgressBar from "../progress/ProgressBar.svelte";
+  import ScanActivityLog from "../progress/ScanActivityLog.svelte";
   import ResultsPanel from "../results/ResultsPanel.svelte";
   import EmptyState from "../results/EmptyState.svelte";
   import { scanState } from "../../stores/scanState.svelte";
@@ -58,6 +59,9 @@
       </div>
       <button class="error-dismiss" onclick={() => scanState.dismissError()} title="Dismiss">{"\u2715"}</button>
     </div>
+  {/if}
+  {#if scanState.logEntries.length > 0}
+    <ScanActivityLog />
   {/if}
   {#if scanState.phase === "complete" || scanState.hostResults.length > 0}
     <ResultsPanel />

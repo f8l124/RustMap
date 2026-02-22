@@ -71,6 +71,23 @@
         <p class="no-data text-muted">No ports match filters</p>
       {/if}
 
+      {#if hostResult.host.geo_info}
+        <div class="geo-info">
+          <span class="section-label">GeoIP</span>
+          <div class="geo-details">
+            {#if hostResult.host.geo_info.country}
+              <span>{hostResult.host.geo_info.country_code ?? ""} - {hostResult.host.geo_info.country}</span>
+            {/if}
+            {#if hostResult.host.geo_info.city}
+              <span>{hostResult.host.geo_info.city}</span>
+            {/if}
+            {#if hostResult.host.geo_info.asn}
+              <span>AS{hostResult.host.geo_info.asn} {hostResult.host.geo_info.as_org ?? ""}</span>
+            {/if}
+          </div>
+        </div>
+      {/if}
+
       {#if hostResult.os_fingerprint}
         <OsInfo fingerprint={hostResult.os_fingerprint} />
       {/if}
@@ -187,5 +204,25 @@
     font-size: 12px;
     padding-top: var(--space-xs);
     border-top: 1px solid var(--border-subtle);
+  }
+
+  .geo-info {
+    font-size: 13px;
+  }
+
+  .geo-info .section-label {
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+  }
+
+  .geo-details {
+    display: flex;
+    gap: var(--space-md);
+    flex-wrap: wrap;
+    margin-top: var(--space-xs);
+    color: var(--text-secondary);
   }
 </style>

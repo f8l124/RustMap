@@ -4,6 +4,7 @@ import type {
   HostResultPayload,
   ScanCompletePayload,
   ScanErrorPayload,
+  ScanLogPayload,
 } from "../types";
 import { scanState } from "../stores/scanState.svelte";
 import { scanHistory } from "../stores/scanHistory.svelte";
@@ -50,6 +51,12 @@ export function setupEventListeners(): () => void {
     listen<ScanErrorPayload>("scan-error", (event) => {
       scanState.onScanError(event.payload.error);
       refreshHistory();
+    }),
+  );
+
+  unlisteners.push(
+    listen<ScanLogPayload>("scan-log", (event) => {
+      scanState.onScanLog(event.payload.message);
     }),
   );
 

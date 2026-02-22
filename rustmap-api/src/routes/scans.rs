@@ -180,6 +180,7 @@ async fn relay_scan_events(
                 }
                 WsEvent::Error { message: msg }
             }
+            rustmap_core::ScanEvent::Log(msg) => WsEvent::Log { message: msg },
         };
 
         // Broadcast to all WebSocket subscribers (ignore errors — no receivers is fine)

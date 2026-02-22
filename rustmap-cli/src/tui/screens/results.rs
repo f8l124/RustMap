@@ -302,6 +302,34 @@ fn render_detail(
         }
     }
 
+    // GeoIP info
+    if let Some(ref geo) = host.host.geo_info {
+        lines.push(Line::from(""));
+        lines.push(Line::from(Span::styled(
+            "=== GeoIP ===",
+            theme::TEXT_BOLD,
+        )));
+        if let Some(ref country) = geo.country {
+            let code = geo.country_code.as_deref().unwrap_or("");
+            lines.push(Line::from(format!("  Country: {code} - {country}")));
+        }
+        if let Some(ref city) = geo.city {
+            lines.push(Line::from(format!("  City:    {city}")));
+        }
+        if let Some(asn) = geo.asn {
+            let org = geo.as_org.as_deref().unwrap_or("");
+            lines.push(Line::from(format!("  ASN:     AS{asn} {org}")));
+        }
+        if let Some(lat) = geo.latitude
+            && let Some(lon) = geo.longitude
+        {
+            lines.push(Line::from(format!("  Coords:  {lat:.4}, {lon:.4}")));
+        }
+        if let Some(ref tz) = geo.timezone {
+            lines.push(Line::from(format!("  TZ:      {tz}")));
+        }
+    }
+
     // OS fingerprint
     if let Some(ref os) = host.os_fingerprint
         && let Some(ref family) = os.os_family

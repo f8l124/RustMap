@@ -5,6 +5,11 @@ use std::path::{Path, PathBuf};
 use thiserror::Error;
 use tracing::warn;
 
+#[cfg(feature = "api")]
+mod api;
+#[cfg(feature = "api")]
+pub use api::GeoIpApiClient;
+
 #[derive(Debug, Error)]
 pub enum GeoIpError {
     #[error("no MMDB database files found in {0}")]
@@ -172,7 +177,7 @@ impl GeoIpReader {
 }
 
 /// Search standard locations for MMDB files.
-/// Order: custom path -> `$RUSTMAP_GEOIP_DIR` -> `~/.rustmap/geoip/` -> cwd
+/// Order: custom path -> `$RUSTMAP_GEOIP_DIR` -> `~/.rustmap/geoip/` -> cwd -> next to exe
 pub fn find_geoip_dir(custom: Option<&Path>) -> Option<PathBuf> {
     // 1. Custom path provided by user
     if let Some(p) = custom
@@ -207,6 +212,17 @@ pub fn find_geoip_dir(custom: Option<&Path>) -> Option<PathBuf> {
         }
     }
 
+    // 5. Next to the running executable
+    if let Ok(exe) = std::env::current_exe()
+        && let Some(exe_dir) = exe.parent()
+    {
+        let city = exe_dir.join("GeoLite2-City.mmdb");
+        let asn = exe_dir.join("GeoLite2-ASN.mmdb");
+        if city.exists() || asn.exists() {
+            return Some(exe_dir.to_path_buf());
+        }
+    }
+
     None
 }
 
@@ -216,6 +232,45 @@ pub fn enrich_scan_result(result: &mut ScanResult, reader: &GeoIpReader) {
         if host_result.host.geo_info.is_none() {
             host_result.host.geo_info = reader.lookup(host_result.host.ip);
         }
+    }
+}
+
+/// Automatically enrich a scan result using the best available GeoIP source.
+///
+/// Tries local MMDB databases first, then falls back to the freeipapi.com API.
+#[cfg(feature = "api")]
+pub async fn enrich_auto(result: &mut ScanResult, custom_dir: Option<&Path>) {
+    // Try MMDB first (fast, no network)
+    if let Some(dir) = find_geoip_dir(custom_dir)
+        && let Ok(reader) = GeoIpReader::open(&dir)
+    {
+        enrich_scan_result(result, &reader);
+        return;
+    }
+
+    // Fall back to API
+    warn!("No local MMDB databases found, falling back to freeipapi.com API");
+    let client = GeoIpApiClient::new();
+    client.enrich_scan_result(result).await;
+}
+
+/// Automatically enrich a scan result using local MMDB databases only.
+///
+/// This version is used when the `api` feature is disabled.
+#[cfg(not(feature = "api"))]
+pub fn enrich_auto_sync(result: &mut ScanResult, custom_dir: Option<&Path>) {
+    if let Some(dir) = find_geoip_dir(custom_dir) {
+        if let Ok(reader) = GeoIpReader::open(&dir) {
+            enrich_scan_result(result, &reader);
+        } else {
+            warn!("Failed to open MMDB databases");
+        }
+    } else {
+        warn!(
+            "No GeoLite2 MMDB databases found.\n\
+             Download from: https://dev.maxmind.com/geoip/geolite2-free-geolocation-data\n\
+             Place in: ~/.rustmap/geoip/ or use --geoip-db <DIR>"
+        );
     }
 }
 

@@ -211,6 +211,7 @@ export interface GuiScanConfig {
   scripts: string[];
   script_args: string | null;
   custom_script_paths: string[];
+  geoip_enabled: boolean;
 }
 
 export interface ScriptInfo {
@@ -283,6 +284,11 @@ export interface ScanCompletePayload {
 export interface ScanErrorPayload {
   scan_id: string;
   error: string;
+}
+
+export interface ScanLogPayload {
+  scan_id: string;
+  message: string;
 }
 
 export interface PresetInfo {

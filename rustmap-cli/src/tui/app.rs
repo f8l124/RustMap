@@ -287,6 +287,7 @@ pub struct ConfigScreenState {
     pub randomize_ports: bool,
     pub fragment_packets: bool,
     pub mtu_discovery: bool,
+    pub geoip: bool,
 
     // Form state
     pub focused_field: usize,
@@ -311,6 +312,7 @@ impl Default for ConfigScreenState {
             randomize_ports: false,
             fragment_packets: false,
             mtu_discovery: false,
+            geoip: false,
             focused_field: 0,
             cursor_pos: 0,
             error: None,
@@ -419,7 +421,18 @@ impl App {
                 self.scan_state.phase = ScanPhase::Complete;
                 self.scan_state.log("Scan complete.".into());
                 self.scan_running = false;
-                self.scan_result = Some(*scan_result.clone());
+                let mut result = *scan_result.clone();
+
+                // GeoIP enrichment (sync MMDB lookup)
+                if self.config_state.geoip
+                    && let Some(dir) = rustmap_geoip::find_geoip_dir(None)
+                    && let Ok(reader) = rustmap_geoip::GeoIpReader::open(&dir)
+                {
+                    rustmap_geoip::enrich_scan_result(&mut result, &reader);
+                    self.scan_state.log("GeoIP enrichment complete.".into());
+                }
+
+                self.scan_result = Some(result);
                 self.scan_tx = None;
                 self.screen = Screen::Results;
                 self.results_state = ResultsScreenState::default();
@@ -432,6 +445,9 @@ impl App {
             ScanEvent::Error(msg) => {
                 self.scan_state.phase = ScanPhase::Error(msg.clone());
                 self.scan_state.log(format!("Error: {msg}"));
+            }
+            ScanEvent::Log(msg) => {
+                self.scan_state.log(msg.clone());
             }
         }
     }

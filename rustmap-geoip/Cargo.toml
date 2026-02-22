@@ -3,8 +3,16 @@ name = "rustmap-geoip"
 version.workspace = true
 edition.workspace = true
 
+[features]
+default = ["api"]
+api = ["dep:reqwest", "dep:tokio", "dep:serde", "dep:serde_json"]
+
 [dependencies]
 rustmap-types = { workspace = true }
 maxminddb     = "0.27"
 thiserror     = { workspace = true }
 tracing       = { workspace = true }
+reqwest       = { workspace = true, optional = true }
+tokio         = { workspace = true, optional = true }
+serde         = { workspace = true, optional = true }
+serde_json    = { workspace = true, optional = true }

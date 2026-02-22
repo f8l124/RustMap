@@ -14,6 +14,9 @@ use crate::traits::ScanError;
 const MAX_HOPS: u8 = 30;
 /// Timeout per hop before declaring it unreachable (*).
 const HOP_TIMEOUT: Duration = Duration::from_secs(3);
+/// Stop after this many consecutive timeouts — indicates raw packets aren't
+/// reaching the network (e.g. wrong gateway MAC, firewall, etc.).
+const MAX_CONSECUTIVE_TIMEOUTS: u8 = 5;
 
 /// Perform a traceroute to the given host.
 ///
@@ -57,6 +60,7 @@ pub async fn trace_route(
     let mut hops = Vec::new();
     // Track recent hop IPs for routing loop detection
     let mut recent_hops: Vec<Option<IpAddr>> = Vec::new();
+    let mut consecutive_timeouts: u8 = 0;
 
     for ttl in 1..=MAX_HOPS {
         let src_port = 40000 + (ttl as u16);
@@ -89,6 +93,11 @@ pub async fn trace_route(
                 hostname: None,
                 rtt: None,
             });
+            consecutive_timeouts += 1;
+            if consecutive_timeouts >= MAX_CONSECUTIVE_TIMEOUTS {
+                warn!(ttl, "too many consecutive send failures, stopping traceroute");
+                break;
+            }
             continue;
         }
 
@@ -122,7 +131,9 @@ pub async fn trace_route(
                         rtt: None,
                     });
                     recent_hops.push(None);
+                    consecutive_timeouts += 1;
                 } else {
+                    consecutive_timeouts = 0;
                     hops.push(TracerouteHop {
                         ttl,
                         ip: Some(hop_ip),
@@ -159,6 +170,7 @@ pub async fn trace_route(
                     rtt: None,
                 });
                 recent_hops.push(None);
+                consecutive_timeouts += 1;
             }
             Err(_) => {
                 // Timeout — hop didn't respond (*)
@@ -170,7 +182,19 @@ pub async fn trace_route(
                     rtt: None,
                 });
                 recent_hops.push(None);
+                consecutive_timeouts += 1;
             }
+        }
+
+        // Stop early if too many consecutive hops produced no response —
+        // raw packets likely aren't reaching the network at all.
+        if consecutive_timeouts >= MAX_CONSECUTIVE_TIMEOUTS {
+            warn!(
+                ttl,
+                consecutive_timeouts,
+                "too many consecutive timeouts, stopping traceroute"
+            );
+            break;
         }
     }
 

@@ -32,7 +32,8 @@ const FIELD_TRACEROUTE: usize = 10;
 const FIELD_RANDOMIZE: usize = 11;
 const FIELD_FRAGMENT: usize = 12;
 const FIELD_MTU: usize = 13;
-const FIELD_COUNT: usize = 14;
+const FIELD_GEOIP: usize = 14;
+const FIELD_COUNT: usize = 15;
 
 // ---------------------------------------------------------------------------
 // Option arrays
@@ -108,6 +109,7 @@ pub fn initial_state(config: &ScanConfig) -> ConfigScreenState {
         randomize_ports: config.randomize_ports,
         fragment_packets: config.fragment_packets,
         mtu_discovery: config.mtu_discovery,
+        geoip: false,
         focused_field: 0,
         cursor_pos: 0,
         error: None,
@@ -265,6 +267,11 @@ pub fn render(frame: &mut ratatui::Frame, area: Rect, state: &mut ConfigScreenSt
         state.mtu_discovery,
         f == FIELD_MTU,
     ));
+    lines.push(toggle_field(
+        "  GeoIP:       ",
+        state.geoip,
+        f == FIELD_GEOIP,
+    ));
     lines.push(Line::from(""));
 
     // Error
@@ -383,7 +390,13 @@ fn is_cycle_field(idx: usize) -> bool {
 fn is_toggle_field(idx: usize) -> bool {
     matches!(
         idx,
-        FIELD_SERVICE | FIELD_OS | FIELD_TRACEROUTE | FIELD_RANDOMIZE | FIELD_FRAGMENT | FIELD_MTU
+        FIELD_SERVICE
+            | FIELD_OS
+            | FIELD_TRACEROUTE
+            | FIELD_RANDOMIZE
+            | FIELD_FRAGMENT
+            | FIELD_MTU
+            | FIELD_GEOIP
     )
 }
 
@@ -419,6 +432,7 @@ fn toggle_value(state: &mut ConfigScreenState) {
         FIELD_RANDOMIZE => state.randomize_ports = !state.randomize_ports,
         FIELD_FRAGMENT => state.fragment_packets = !state.fragment_packets,
         FIELD_MTU => state.mtu_discovery = !state.mtu_discovery,
+        FIELD_GEOIP => state.geoip = !state.geoip,
         _ => {}
     }
 }

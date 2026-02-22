@@ -32,6 +32,10 @@
     label="QUIC Probing"
     bind:checked={scanConfig.quicProbing}
   />
+  <Toggle
+    label="GeoIP Tagging (--geoip)"
+    bind:checked={scanConfig.geoipEnabled}
+  />
 </div>
 
 <style>

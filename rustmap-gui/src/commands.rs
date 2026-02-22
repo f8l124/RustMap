@@ -51,6 +51,12 @@ struct ScanErrorPayload {
     error: String,
 }
 
+#[derive(Clone, Serialize)]
+struct ScanLogPayload {
+    scan_id: String,
+    message: String,
+}
+
 // ----- Privilege info -----
 
 #[derive(Clone, Serialize)]
@@ -235,13 +241,15 @@ pub async fn start_scan(
     state: State<'_, Arc<ScanState>>,
     config: GuiScanConfig,
 ) -> Result<String, String> {
-    // Capture script config before consuming config
+    // Capture config fields before consuming config
     let script_enabled = config.script_enabled;
     let script_patterns = config.scripts.clone();
     let script_args_str = config.script_args.clone();
     let custom_script_paths = config.custom_script_paths.clone();
+    let geoip_enabled = config.geoip_enabled;
 
-    let scan_config = config.into_scan_config()?;
+    let scan_config = config.into_scan_config().await?;
+    let initial_hosts_total = scan_config.targets.len();
 
     let scan_id = format!("scan-{}", uuid::Uuid::new_v4());
     let cancel = CancellationToken::new();
@@ -254,6 +262,17 @@ pub async fn start_scan(
     }
 
     let started_at = now_ms();
+
+    // Emit initial scan-started immediately so the GUI shows 0/N instead of 0/0
+    // while discovery is still running. The DiscoveryComplete event will update
+    // the count if it changes (e.g. CIDR expansion was already done in config).
+    let _ = app.emit(
+        "scan-started",
+        ScanStartedPayload {
+            scan_id: scan_id.clone(),
+            hosts_total: initial_hosts_total,
+        },
+    );
 
     // Spawn the scan task
     let state_clone = state.inner().clone();
@@ -306,7 +325,18 @@ pub async fn start_scan(
                     let patterns = script_patterns.clone();
                     let custom_paths = custom_script_paths.clone();
                     let args_str = script_args_str.clone();
+                    let emit_log = |app: &AppHandle, scan_id: &str, msg: &str| {
+                        let _ = app.emit(
+                            "scan-log",
+                            ScanLogPayload {
+                                scan_id: scan_id.to_string(),
+                                message: msg.to_string(),
+                            },
+                        );
+                    };
+
                     let result = if run_scripts {
+                        emit_log(&app, &scan_id, "Running scripts...");
                         let script_args = parse_script_args(args_str.as_deref());
                         let script_config = rustmap_types::ScriptConfig {
                             enabled: true,
@@ -364,7 +394,15 @@ pub async fn start_scan(
                         result
                     };
 
+                    // GeoIP enrichment
+                    let mut result = result;
+                    if geoip_enabled {
+                        emit_log(&app, &scan_id, "GeoIP enrichment...");
+                        rustmap_geoip::enrich_auto(&mut result, None).await;
+                    }
+
                     // Save to persistent database (includes script results)
+                    emit_log(&app, &scan_id, "Saving to database...");
                     {
                         let store = state_clone.store.lock().await;
                         if let Err(e) =
@@ -401,6 +439,15 @@ pub async fn start_scan(
                         ScanErrorPayload {
                             scan_id: scan_id.clone(),
                             error: msg,
+                        },
+                    );
+                }
+                ScanEvent::Log(msg) => {
+                    let _ = app.emit(
+                        "scan-log",
+                        ScanLogPayload {
+                            scan_id: scan_id.clone(),
+                            message: msg,
                         },
                     );
                 }
@@ -626,6 +673,13 @@ pub async fn import_scan_from_file(
         total_duration_ms: result.total_duration.as_millis().min(u64::MAX as u128) as u64,
         command_args: result.command_args,
     })
+}
+
+#[tauri::command]
+pub fn get_app_version() -> String {
+    option_env!("RUSTMAP_VERSION")
+        .unwrap_or(env!("CARGO_PKG_VERSION"))
+        .to_string()
 }
 
 #[cfg(test)]

@@ -13,6 +13,12 @@ export type ScanPhase =
 
 export type ErrorKind = "config" | "scan" | "privilege" | "backend" | null;
 
+export interface LogEntry {
+  message: string;
+  timestamp: number;
+  relativeTime: string;
+}
+
 class ScanStateStore {
   phase = $state<ScanPhase>("idle");
   scanId = $state<string | null>(null);
@@ -23,6 +29,7 @@ class ScanStateStore {
   error = $state<string | null>(null);
   errorKind = $state<ErrorKind>(null);
   startedAt = $state<number | null>(null);
+  logEntries = $state<LogEntry[]>([]);
 
   get isScanning(): boolean {
     return this.phase === "starting" || this.phase === "scanning";
@@ -47,6 +54,11 @@ class ScanStateStore {
     return this.hostResults.filter((h) => h.host_status === "Up").length;
   }
 
+  get latestLog(): string | null {
+    if (this.logEntries.length === 0) return null;
+    return this.logEntries[this.logEntries.length - 1].message;
+  }
+
   onStarting() {
     this.phase = "starting";
     this.hostResults = [];
@@ -56,6 +68,7 @@ class ScanStateStore {
     this.error = null;
     this.errorKind = null;
     this.startedAt = Date.now();
+    this.logEntries = [];
   }
 
   onScanStarted(scanId: string, hostsTotal: number) {
@@ -75,6 +88,9 @@ class ScanStateStore {
   onScanComplete(result: ScanResult) {
     this.phase = "complete";
     this.finalResult = result;
+    // Replace streaming results with the final enriched results (which
+    // include GeoIP, post-scripts, and any other post-processing).
+    this.hostResults = result.hosts;
     this.hostsCompleted = result.hosts.length;
     this.hostsTotal = result.hosts.length;
   }
@@ -87,6 +103,18 @@ class ScanStateStore {
     }
     this.error = error;
     this.errorKind = kind;
+  }
+
+  onScanLog(message: string) {
+    const now = Date.now();
+    const elapsedSecs = this.startedAt
+      ? Math.floor((now - this.startedAt) / 1000)
+      : 0;
+    const mins = Math.floor(elapsedSecs / 60);
+    const secs = elapsedSecs % 60;
+    const relativeTime = `${mins}:${secs.toString().padStart(2, "0")}`;
+    this.logEntries.push({ message, timestamp: now, relativeTime });
+    this.logEntries = this.logEntries;
   }
 
   dismissError() {
@@ -107,6 +135,7 @@ class ScanStateStore {
     this.error = null;
     this.errorKind = null;
     this.startedAt = null;
+    this.logEntries = [];
   }
 }
 

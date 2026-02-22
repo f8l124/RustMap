@@ -20,6 +20,7 @@ rustmap-timing = { workspace = true }
 rustmap-db     = { workspace = true }
 rustmap-script = { workspace = true }
 rustmap-detect = { workspace = true }
+rustmap-geoip  = { workspace = true }
 tauri          = { version = "2", features = ["devtools"] }
 tauri-plugin-shell = "2"
 tauri-plugin-dialog = "2"

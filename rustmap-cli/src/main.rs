@@ -97,6 +97,14 @@ async fn main() -> Result<()> {
         return self_test::run_self_test();
     }
 
+    // TUI mode (no targets required): launch interactive terminal UI
+    #[cfg(feature = "tui")]
+    if args.tui && args.targets.is_empty() {
+        let config = ScanConfig::default();
+        let output_config = build_output_config(&args);
+        return tui::run_tui(config, output_config).await;
+    }
+
     // Handle --api: start REST API server and block
     #[cfg(feature = "api")]
     if args.api {
@@ -631,6 +639,11 @@ async fn main() -> Result<()> {
                 warn!("scan error: {msg}");
                 // Don't break -- continue collecting results from other hosts
             }
+            rustmap_core::ScanEvent::Log(msg) => {
+                if args.verbose > 0 {
+                    eprintln!("{msg}");
+                }
+            }
         }
     }
 
@@ -687,25 +700,10 @@ async fn main() -> Result<()> {
         }
     }
 
-    // GeoIP enrichment
+    // GeoIP enrichment (local MMDB with API fallback)
     if args.geoip {
         let custom_dir = args.geoip_db.as_ref().map(std::path::Path::new);
-        match rustmap_geoip::find_geoip_dir(custom_dir) {
-            Some(dir) => match rustmap_geoip::GeoIpReader::open(&dir) {
-                Ok(reader) => {
-                    info!(dir = %dir.display(), "GeoIP databases loaded");
-                    rustmap_geoip::enrich_scan_result(&mut result, &reader);
-                }
-                Err(e) => eprintln!("Warning: failed to open GeoIP databases: {e}"),
-            },
-            None => {
-                eprintln!(
-                    "Warning: --geoip enabled but no GeoLite2 MMDB files found.\n\
-                     Download from: https://dev.maxmind.com/geoip/geolite2-free-geolocation-data\n\
-                     Place in: ~/.rustmap/geoip/ or use --geoip-db <DIR>"
-                );
-            }
-        }
+        rustmap_geoip::enrich_auto(&mut result, custom_dir).await;
     }
 
     // Vulnerability correlation (before output so risk scores are included)
@@ -1659,6 +1657,9 @@ async fn resume_scan(scan_id: &str) -> Result<()> {
             }
             ScanEvent::Error(msg) => {
                 warn!("scan error: {msg}");
+            }
+            ScanEvent::Log(msg) => {
+                eprintln!("  {msg}");
             }
         }
     }

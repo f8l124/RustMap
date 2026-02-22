@@ -49,6 +49,8 @@ pub enum ScanEvent {
     Complete(Box<ScanResult>),
     /// Non-fatal error during scan.
     Error(String),
+    /// Informational log message for activity tracking.
+    Log(String),
 }
 
 pub struct ScanEngine;
@@ -102,6 +104,9 @@ impl ScanEngine {
         let hosts_total = config.targets.len();
 
         // Step 1: Host discovery (respects cancellation)
+        let _ = tx
+            .send(ScanEvent::Log("Starting host discovery...".into()))
+            .await;
         let discovery_results = tokio::select! {
             _ = cancel.cancelled() => {
                 let _ = tx.send(ScanEvent::Error("scan cancelled".into())).await;
@@ -109,6 +114,15 @@ impl ScanEngine {
             }
             result = run_discovery(config) => result?,
         };
+        let up_count = discovery_results
+            .iter()
+            .filter(|d| d.status == HostStatus::Up || d.status == HostStatus::Unknown)
+            .count();
+        let _ = tx
+            .send(ScanEvent::Log(format!(
+                "Discovery complete: {up_count}/{hosts_total} hosts up"
+            )))
+            .await;
         let _ = tx.send(ScanEvent::DiscoveryComplete { hosts_total }).await;
 
         // Step 2: If ping-only, return discovery results without port scan
@@ -231,6 +245,7 @@ impl ScanEngine {
             let service_detector = service_detector.clone();
             let os_detector = os_detector.clone();
             let host_semaphore = host_semaphore.clone();
+            let tx = tx.clone();
 
             join_set.spawn(async move {
                 let _permit = match host_semaphore.acquire().await {
@@ -266,6 +281,7 @@ impl ScanEngine {
                     &os_detector,
                     status,
                     latency,
+                    &tx,
                 )
                 .await;
 
@@ -350,6 +366,7 @@ impl ScanEngine {
 ///
 /// Wraps the inner scan function with `tokio::time::timeout` if a host
 /// timeout is configured. On timeout, returns a partial result with empty ports.
+#[allow(clippy::too_many_arguments)]
 async fn scan_single_host(
     target: &Host,
     config: &ScanConfig,
@@ -358,6 +375,7 @@ async fn scan_single_host(
     os_detector: &OsDetector,
     status: HostStatus,
     latency: Option<Duration>,
+    tx: &mpsc::Sender<ScanEvent>,
 ) -> HostScanResult {
     let host_timeout = config.host_timeout;
 
@@ -370,6 +388,7 @@ async fn scan_single_host(
             os_detector,
             status,
             latency,
+            tx,
         )
         .await
     } else {
@@ -383,6 +402,7 @@ async fn scan_single_host(
                 os_detector,
                 status,
                 latency,
+                tx,
             ),
         )
         .await
@@ -415,6 +435,7 @@ async fn scan_single_host(
 }
 
 /// Inner single-host scanning: port scan → service enrichment → service detection → OS detection.
+#[allow(clippy::too_many_arguments)]
 async fn scan_single_host_inner(
     target: &Host,
     config: &ScanConfig,
@@ -423,10 +444,23 @@ async fn scan_single_host_inner(
     os_detector: &OsDetector,
     status: HostStatus,
     latency: Option<Duration>,
+    tx: &mpsc::Sender<ScanEvent>,
 ) -> HostScanResult {
+    let host_label = target
+        .hostname
+        .as_deref()
+        .map(|h| format!("{} ({})", target.ip, h))
+        .unwrap_or_else(|| target.ip.to_string());
+
     info!("scanning host: {}", target.ip);
 
     // Phase 1: Port scan
+    let _ = tx
+        .send(ScanEvent::Log(format!(
+            "Scanning {} ports on {host_label}...",
+            config.ports.len()
+        )))
+        .await;
     let mut result = match scanner.scan_host(target, config).await {
         Ok(r) => r,
         Err(e) => {
@@ -451,8 +485,29 @@ async fn scan_single_host_inner(
     result.host_status = status;
     result.discovery_latency = latency;
 
+    let open = result
+        .ports
+        .iter()
+        .filter(|p| p.state == PortState::Open)
+        .count();
+    let filtered = result
+        .ports
+        .iter()
+        .filter(|p| p.state == PortState::Filtered)
+        .count();
+    let _ = tx
+        .send(ScanEvent::Log(format!(
+            "Port scan complete on {host_label}: {open} open, {filtered} filtered"
+        )))
+        .await;
+
     // Phase 1.5: MTU discovery (--mtu-discovery, IPv4 only)
     if config.mtu_discovery && target.ip.is_ipv4() {
+        let _ = tx
+            .send(ScanEvent::Log(format!(
+                "Running MTU discovery on {host_label}..."
+            )))
+            .await;
         info!(target = %target.ip, "running path MTU discovery");
         result.mtu = rustmap_scan::discovery::discover_mtu(target, config.timeout).await;
     }
@@ -462,6 +517,16 @@ async fn scan_single_host_inner(
 
     // Phase 3: Active service/version detection (-sV)
     if config.service_detection.enabled {
+        let open_count = result
+            .ports
+            .iter()
+            .filter(|p| p.state == PortState::Open)
+            .count();
+        let _ = tx
+            .send(ScanEvent::Log(format!(
+                "Detecting services on {host_label} ({open_count} open ports)..."
+            )))
+            .await;
         info!("detecting services on {}", target.ip);
         if let Err(e) = service_detector
             .detect_services(
@@ -482,6 +547,11 @@ async fn scan_single_host_inner(
 
     // Phase 4: OS detection (-O)
     if config.os_detection.enabled {
+        let _ = tx
+            .send(ScanEvent::Log(format!(
+                "Running OS fingerprint on {host_label}..."
+            )))
+            .await;
         let open_port = find_open_port(&result.ports);
         let closed_port = find_closed_port(&result.ports);
 
@@ -584,6 +654,11 @@ async fn scan_single_host_inner(
 
     // Phase 5: Traceroute (--traceroute)
     if config.traceroute {
+        let _ = tx
+            .send(ScanEvent::Log(format!(
+                "Running traceroute to {host_label}..."
+            )))
+            .await;
         let open_port = result
             .ports
             .iter()

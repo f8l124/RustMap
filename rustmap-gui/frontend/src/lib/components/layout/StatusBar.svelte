@@ -1,6 +1,10 @@
 <script lang="ts">
+  import { getAppVersion } from "../../tauri/commands";
   import { privileges } from "../../stores/privileges.svelte";
   import { scanState } from "../../stores/scanState.svelte";
+
+  let appVersion = $state("...");
+  getAppVersion().then((v) => (appVersion = v));
 </script>
 
 <footer class="status-bar">
@@ -20,7 +24,7 @@
       Ready
     {/if}
   </span>
-  <span class="status-item text-muted">v0.1.0</span>
+  <span class="status-item text-muted">v{appVersion}</span>
 </footer>
 
 <style>

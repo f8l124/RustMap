@@ -41,6 +41,7 @@ class ScanConfigStore {
   scripts = $state<string[]>([]);
   scriptArgs = $state("");
   customScriptPaths = $state<string[]>([]);
+  geoipEnabled = $state(false);
 
   get configValid(): boolean {
     return this.targets.trim().length > 0;
@@ -93,6 +94,7 @@ class ScanConfigStore {
       scripts: this.scripts,
       script_args: this.scriptArgs.trim() || null,
       custom_script_paths: this.customScriptPaths,
+      geoip_enabled: this.geoipEnabled,
     };
   }
 
@@ -137,6 +139,7 @@ class ScanConfigStore {
     this.scripts = [];
     this.scriptArgs = "";
     this.customScriptPaths = [];
+    this.geoipEnabled = false;
   }
 
   loadFromConfig(config: GuiScanConfig) {
@@ -180,6 +183,7 @@ class ScanConfigStore {
     this.scripts = config.scripts;
     this.scriptArgs = config.script_args ?? "";
     this.customScriptPaths = config.custom_script_paths;
+    this.geoipEnabled = config.geoip_enabled;
   }
 }
 

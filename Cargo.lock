@@ -5378,8 +5378,12 @@ name = "rustmap-geoip"
 version = "0.1.0"
 dependencies = [
  "maxminddb",
+ "reqwest 0.12.28",
  "rustmap-types",
+ "serde",
+ "serde_json",
  "thiserror 2.0.18",
+ "tokio",
  "tracing",
 ]
 
@@ -5391,6 +5395,7 @@ dependencies = [
  "rustmap-core",
  "rustmap-db",
  "rustmap-detect",
+ "rustmap-geoip",
  "rustmap-output",
  "rustmap-packet",
  "rustmap-script",

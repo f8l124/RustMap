@@ -8,7 +8,7 @@ pub const DEFAULT_MAX_HOSTGROUP: usize = 256;
 #[command(name = "rustmap", version, about = "Network scanner inspired by nmap")]
 pub struct Args {
     /// Target host(s): IP, CIDR, range, or hostname
-    #[arg(value_name = "TARGET", required_unless_present_any = ["list_profiles", "history", "vuln_update", "api", "resume", "self_test"], num_args = 1..)]
+    #[arg(value_name = "TARGET", required_unless_present_any = ["list_profiles", "history", "vuln_update", "api", "resume", "self_test", "tui"], num_args = 1..)]
     pub targets: Vec<String>,
 
     /// Port specification (e.g., 80, 80,443, 1-1024). Defaults to top 1000 ports.

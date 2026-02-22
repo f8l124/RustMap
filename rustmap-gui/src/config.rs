@@ -1,10 +1,10 @@
 use std::time::Duration;
 
-use rustmap_core::parse_target;
+use rustmap_core::parse_target_with_dns;
 use rustmap_timing::TimingParams;
 use rustmap_types::{
-    DiscoveryConfig, DiscoveryMethod, DiscoveryMode, OsDetectionConfig, PortRange, ProxyConfig,
-    ScanConfig, ScanType, ServiceDetectionConfig, TimingTemplate, top_tcp_ports,
+    DiscoveryConfig, DiscoveryMethod, DiscoveryMode, DnsConfig, OsDetectionConfig, PortRange,
+    ProxyConfig, ScanConfig, ScanType, ServiceDetectionConfig, TimingTemplate, top_tcp_ports,
 };
 use serde::{Deserialize, Serialize};
 
@@ -54,6 +54,7 @@ pub struct GuiScanConfig {
     pub scripts: Vec<String>,
     pub script_args: Option<String>,
     pub custom_script_paths: Vec<String>,
+    pub geoip_enabled: bool,
 }
 
 fn parse_port_list_opt(s: &Option<String>) -> Result<Option<Vec<u16>>, String> {
@@ -74,11 +75,12 @@ fn parse_port_list_opt(s: &Option<String>) -> Result<Option<Vec<u16>>, String> {
 }
 
 impl GuiScanConfig {
-    pub fn into_scan_config(self) -> Result<ScanConfig, String> {
-        // Parse targets
+    pub async fn into_scan_config(self) -> Result<ScanConfig, String> {
+        // Parse targets (async DNS resolution for hostnames)
+        let dns = DnsConfig::default();
         let mut hosts = Vec::new();
         for target in &self.targets {
-            match parse_target(target) {
+            match parse_target_with_dns(target, &dns).await {
                 Ok(parsed) => hosts.extend(parsed),
                 Err(e) => return Err(format!("invalid target '{}': {}", target, e)),
             }
@@ -354,102 +356,103 @@ mod tests {
             scripts: vec![],
             script_args: None,
             custom_script_paths: vec![],
+            geoip_enabled: false,
         }
     }
 
     // --- Scan type mapping ---
 
-    #[test]
-    fn scan_type_t_tcp_connect() {
+    #[tokio::test]
+    async fn scan_type_t_tcp_connect() {
         let cfg = default_gui_config();
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert_eq!(result.scan_type, ScanType::TcpConnect);
     }
 
-    #[test]
-    fn scan_type_s_tcp_syn() {
+    #[tokio::test]
+    async fn scan_type_s_tcp_syn() {
         let mut cfg = default_gui_config();
         cfg.scan_type = "S".into();
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert_eq!(result.scan_type, ScanType::TcpSyn);
     }
 
-    #[test]
-    fn scan_type_u_udp() {
+    #[tokio::test]
+    async fn scan_type_u_udp() {
         let mut cfg = default_gui_config();
         cfg.scan_type = "U".into();
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert_eq!(result.scan_type, ScanType::Udp);
     }
 
-    #[test]
-    fn scan_type_f_tcp_fin() {
+    #[tokio::test]
+    async fn scan_type_f_tcp_fin() {
         let mut cfg = default_gui_config();
         cfg.scan_type = "F".into();
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert_eq!(result.scan_type, ScanType::TcpFin);
     }
 
-    #[test]
-    fn scan_type_n_tcp_null() {
+    #[tokio::test]
+    async fn scan_type_n_tcp_null() {
         let mut cfg = default_gui_config();
         cfg.scan_type = "N".into();
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert_eq!(result.scan_type, ScanType::TcpNull);
     }
 
-    #[test]
-    fn scan_type_x_tcp_xmas() {
+    #[tokio::test]
+    async fn scan_type_x_tcp_xmas() {
         let mut cfg = default_gui_config();
         cfg.scan_type = "X".into();
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert_eq!(result.scan_type, ScanType::TcpXmas);
     }
 
-    #[test]
-    fn scan_type_a_tcp_ack() {
+    #[tokio::test]
+    async fn scan_type_a_tcp_ack() {
         let mut cfg = default_gui_config();
         cfg.scan_type = "A".into();
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert_eq!(result.scan_type, ScanType::TcpAck);
     }
 
-    #[test]
-    fn scan_type_w_tcp_window() {
+    #[tokio::test]
+    async fn scan_type_w_tcp_window() {
         let mut cfg = default_gui_config();
         cfg.scan_type = "W".into();
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert_eq!(result.scan_type, ScanType::TcpWindow);
     }
 
-    #[test]
-    fn scan_type_m_tcp_maimon() {
+    #[tokio::test]
+    async fn scan_type_m_tcp_maimon() {
         let mut cfg = default_gui_config();
         cfg.scan_type = "M".into();
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert_eq!(result.scan_type, ScanType::TcpMaimon);
     }
 
-    #[test]
-    fn scan_type_z_sctp_init() {
+    #[tokio::test]
+    async fn scan_type_z_sctp_init() {
         let mut cfg = default_gui_config();
         cfg.scan_type = "Z".into();
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert_eq!(result.scan_type, ScanType::SctpInit);
     }
 
-    #[test]
-    fn scan_type_invalid_returns_error() {
+    #[tokio::test]
+    async fn scan_type_invalid_returns_error() {
         let mut cfg = default_gui_config();
         cfg.scan_type = "Q".into();
-        let err = cfg.into_scan_config().unwrap_err();
+        let err = cfg.into_scan_config().await.unwrap_err();
         assert!(err.contains("unknown scan type"), "got: {err}");
     }
 
     // --- Timing templates ---
 
-    #[test]
-    fn timing_all_valid_templates() {
+    #[tokio::test]
+    async fn timing_all_valid_templates() {
         let expected = [
             (0, TimingTemplate::Paranoid),
             (1, TimingTemplate::Sneaky),
@@ -461,130 +464,130 @@ mod tests {
         for (value, expected_template) in expected {
             let mut cfg = default_gui_config();
             cfg.timing = value;
-            let result = cfg.into_scan_config().unwrap();
+            let result = cfg.into_scan_config().await.unwrap();
             assert_eq!(result.timing_template, expected_template, "timing {value}");
         }
     }
 
-    #[test]
-    fn timing_invalid_returns_error() {
+    #[tokio::test]
+    async fn timing_invalid_returns_error() {
         let mut cfg = default_gui_config();
         cfg.timing = 6;
-        let err = cfg.into_scan_config().unwrap_err();
+        let err = cfg.into_scan_config().await.unwrap_err();
         assert!(err.contains("invalid timing template"), "got: {err}");
     }
 
     // --- Port parsing ---
 
-    #[test]
-    fn ports_none_uses_top_1000() {
+    #[tokio::test]
+    async fn ports_none_uses_top_1000() {
         let cfg = default_gui_config();
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert_eq!(result.ports.len(), 1000);
     }
 
-    #[test]
-    fn ports_custom_parsed() {
+    #[tokio::test]
+    async fn ports_custom_parsed() {
         let mut cfg = default_gui_config();
         cfg.ports = Some("80,443".into());
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert_eq!(result.ports.len(), 2);
         assert!(result.ports.contains(&80));
         assert!(result.ports.contains(&443));
     }
 
-    #[test]
-    fn ports_range_parsed() {
+    #[tokio::test]
+    async fn ports_range_parsed() {
         let mut cfg = default_gui_config();
         cfg.ports = Some("20-25".into());
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert_eq!(result.ports.len(), 6);
         for port in 20..=25 {
             assert!(result.ports.contains(&port), "missing port {port}");
         }
     }
 
-    #[test]
-    fn ports_invalid_returns_error() {
+    #[tokio::test]
+    async fn ports_invalid_returns_error() {
         let mut cfg = default_gui_config();
         cfg.ports = Some("abc".into());
-        let err = cfg.into_scan_config().unwrap_err();
+        let err = cfg.into_scan_config().await.unwrap_err();
         assert!(err.contains("invalid port"), "got: {err}");
     }
 
     // --- Target parsing ---
 
-    #[test]
-    fn target_single_ip() {
+    #[tokio::test]
+    async fn target_single_ip() {
         let cfg = default_gui_config();
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert_eq!(result.targets.len(), 1);
         assert_eq!(result.targets[0].ip.to_string(), "127.0.0.1");
     }
 
-    #[test]
-    fn target_cidr() {
+    #[tokio::test]
+    async fn target_cidr() {
         let mut cfg = default_gui_config();
         cfg.targets = vec!["192.168.1.0/30".into()];
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert_eq!(result.targets.len(), 4);
     }
 
-    #[test]
-    fn target_multiple() {
+    #[tokio::test]
+    async fn target_multiple() {
         let mut cfg = default_gui_config();
         cfg.targets = vec!["10.0.0.1".into(), "10.0.0.2".into()];
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert_eq!(result.targets.len(), 2);
     }
 
-    #[test]
-    fn target_empty_returns_error() {
+    #[tokio::test]
+    async fn target_empty_returns_error() {
         let mut cfg = default_gui_config();
         cfg.targets = vec![];
-        let err = cfg.into_scan_config().unwrap_err();
+        let err = cfg.into_scan_config().await.unwrap_err();
         assert!(err.contains("no valid targets"), "got: {err}");
     }
 
-    #[test]
-    fn target_invalid_returns_error() {
+    #[tokio::test]
+    async fn target_invalid_returns_error() {
         let mut cfg = default_gui_config();
         cfg.targets = vec!["not-a-valid-!!!-target".into()];
-        let err = cfg.into_scan_config().unwrap_err();
+        let err = cfg.into_scan_config().await.unwrap_err();
         assert!(err.contains("invalid target"), "got: {err}");
     }
 
     // --- Flag propagation ---
 
-    #[test]
-    fn discovery_mode_default() {
+    #[tokio::test]
+    async fn discovery_mode_default() {
         let cfg = default_gui_config();
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert_eq!(result.discovery.mode, DiscoveryMode::Default);
     }
 
-    #[test]
-    fn discovery_mode_skip() {
+    #[tokio::test]
+    async fn discovery_mode_skip() {
         let mut cfg = default_gui_config();
         cfg.discovery_mode = "skip".into();
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert_eq!(result.discovery.mode, DiscoveryMode::Skip);
     }
 
-    #[test]
-    fn discovery_mode_ping_only() {
+    #[tokio::test]
+    async fn discovery_mode_ping_only() {
         let mut cfg = default_gui_config();
         cfg.discovery_mode = "ping_only".into();
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert_eq!(result.discovery.mode, DiscoveryMode::PingOnly);
     }
 
-    #[test]
-    fn discovery_mode_custom_methods() {
+    #[tokio::test]
+    async fn discovery_mode_custom_methods() {
         let mut cfg = default_gui_config();
         cfg.discovery_mode = "custom".into();
         cfg.discovery_methods = vec!["icmp_echo".into(), "tcp_syn".into()];
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         match result.discovery.mode {
             DiscoveryMode::Custom(methods) => {
                 assert_eq!(methods.len(), 2);
@@ -595,27 +598,27 @@ mod tests {
         }
     }
 
-    #[test]
-    fn discovery_custom_ports_override() {
+    #[tokio::test]
+    async fn discovery_custom_ports_override() {
         let mut cfg = default_gui_config();
         cfg.discovery_mode = "custom".into();
         cfg.discovery_methods = vec!["tcp_syn".into()];
         cfg.tcp_syn_ports = Some("80,8080".into());
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert_eq!(result.discovery.tcp_syn_ports, vec![80, 8080]);
     }
 
-    #[test]
-    fn discovery_invalid_method_errors() {
+    #[tokio::test]
+    async fn discovery_invalid_method_errors() {
         let mut cfg = default_gui_config();
         cfg.discovery_mode = "custom".into();
         cfg.discovery_methods = vec!["bogus".into()];
-        let err = cfg.into_scan_config().unwrap_err();
+        let err = cfg.into_scan_config().await.unwrap_err();
         assert!(err.contains("unknown discovery method"), "got: {err}");
     }
 
-    #[test]
-    fn feature_flags_propagate() {
+    #[tokio::test]
+    async fn feature_flags_propagate() {
         let mut cfg = default_gui_config();
         cfg.service_detection = true;
         cfg.os_detection = true;
@@ -626,7 +629,7 @@ mod tests {
         cfg.min_rate = Some(100.0);
         cfg.max_rate = Some(500.0);
 
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert!(result.service_detection.enabled);
         assert!(result.os_detection.enabled);
         assert_eq!(result.timeout, Duration::from_millis(5000));
@@ -637,10 +640,10 @@ mod tests {
         assert_eq!(result.max_rate, Some(500.0));
     }
 
-    #[test]
-    fn features_disabled_by_default() {
+    #[tokio::test]
+    async fn features_disabled_by_default() {
         let cfg = default_gui_config();
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert!(!result.service_detection.enabled);
         assert!(!result.os_detection.enabled);
         assert!(!result.verbose);
@@ -648,263 +651,263 @@ mod tests {
 
     // --- Timing-aware defaults ---
 
-    #[test]
-    fn concurrency_zero_uses_template_default() {
+    #[tokio::test]
+    async fn concurrency_zero_uses_template_default() {
         let mut cfg = default_gui_config();
         cfg.concurrency = 0;
         cfg.timing = 3;
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         let expected = TimingParams::from_template(TimingTemplate::Normal);
         assert_eq!(result.concurrency, expected.connect_concurrency);
     }
 
-    #[test]
-    fn timeout_zero_uses_template_default() {
+    #[tokio::test]
+    async fn timeout_zero_uses_template_default() {
         let mut cfg = default_gui_config();
         cfg.timeout_ms = 0;
         cfg.timing = 4;
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         let expected = TimingParams::from_template(TimingTemplate::Aggressive);
         assert_eq!(result.timeout, expected.connect_timeout);
     }
 
-    #[test]
-    fn timing_template_affects_auto_defaults() {
+    #[tokio::test]
+    async fn timing_template_affects_auto_defaults() {
         let mut cfg_slow = default_gui_config();
         cfg_slow.concurrency = 0;
         cfg_slow.timeout_ms = 0;
         cfg_slow.timing = 0;
-        let slow = cfg_slow.into_scan_config().unwrap();
+        let slow = cfg_slow.into_scan_config().await.unwrap();
 
         let mut cfg_fast = default_gui_config();
         cfg_fast.concurrency = 0;
         cfg_fast.timeout_ms = 0;
         cfg_fast.timing = 5;
-        let fast = cfg_fast.into_scan_config().unwrap();
+        let fast = cfg_fast.into_scan_config().await.unwrap();
 
         assert!(fast.concurrency > slow.concurrency);
         assert!(fast.timeout < slow.timeout);
     }
 
-    #[test]
-    fn randomize_ports_propagates() {
+    #[tokio::test]
+    async fn randomize_ports_propagates() {
         let mut cfg = default_gui_config();
         cfg.randomize_ports = true;
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert!(result.randomize_ports);
     }
 
-    #[test]
-    fn version_intensity_propagates() {
+    #[tokio::test]
+    async fn version_intensity_propagates() {
         let mut cfg = default_gui_config();
         cfg.service_detection = true;
         cfg.version_intensity = 3;
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert_eq!(result.service_detection.intensity, 3);
     }
 
-    #[test]
-    fn scan_delay_propagates() {
+    #[tokio::test]
+    async fn scan_delay_propagates() {
         let mut cfg = default_gui_config();
         cfg.scan_delay_ms = 500;
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert_eq!(result.scan_delay, Some(Duration::from_millis(500)));
     }
 
-    #[test]
-    fn scan_delay_zero_is_none() {
+    #[tokio::test]
+    async fn scan_delay_zero_is_none() {
         let cfg = default_gui_config();
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert_eq!(result.scan_delay, None);
     }
 
-    #[test]
-    fn mtu_discovery_propagates() {
+    #[tokio::test]
+    async fn mtu_discovery_propagates() {
         let mut cfg = default_gui_config();
         cfg.mtu_discovery = true;
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert!(result.mtu_discovery);
     }
 
-    #[test]
-    fn verbose_propagates() {
+    #[tokio::test]
+    async fn verbose_propagates() {
         let mut cfg = default_gui_config();
         cfg.verbose = true;
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert!(result.verbose);
     }
 
-    #[test]
-    fn min_hostgroup_propagates() {
+    #[tokio::test]
+    async fn min_hostgroup_propagates() {
         let mut cfg = default_gui_config();
         cfg.min_hostgroup = 16;
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert_eq!(result.min_hostgroup, 16);
     }
 
-    #[test]
-    fn max_scan_delay_propagates() {
+    #[tokio::test]
+    async fn max_scan_delay_propagates() {
         let mut cfg = default_gui_config();
         cfg.max_scan_delay_ms = 1000;
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert_eq!(result.max_scan_delay, Some(Duration::from_millis(1000)));
     }
 
-    #[test]
-    fn max_scan_delay_zero_is_none() {
+    #[tokio::test]
+    async fn max_scan_delay_zero_is_none() {
         let cfg = default_gui_config();
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert_eq!(result.max_scan_delay, None);
     }
 
-    #[test]
-    fn probe_timeout_propagates() {
+    #[tokio::test]
+    async fn probe_timeout_propagates() {
         let mut cfg = default_gui_config();
         cfg.probe_timeout_ms = 3000;
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert_eq!(
             result.service_detection.probe_timeout,
             Duration::from_millis(3000)
         );
     }
 
-    #[test]
-    fn probe_timeout_zero_uses_default() {
+    #[tokio::test]
+    async fn probe_timeout_zero_uses_default() {
         let cfg = default_gui_config();
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert_eq!(
             result.service_detection.probe_timeout,
             ServiceDetectionConfig::default().probe_timeout
         );
     }
 
-    #[test]
-    fn quic_probing_propagates() {
+    #[tokio::test]
+    async fn quic_probing_propagates() {
         let mut cfg = default_gui_config();
         cfg.quic_probing = false;
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert!(!result.service_detection.quic_probing);
     }
 
-    #[test]
-    fn proxy_url_propagates() {
+    #[tokio::test]
+    async fn proxy_url_propagates() {
         let mut cfg = default_gui_config();
         cfg.proxy_url = Some("socks5://127.0.0.1:1080".into());
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         let proxy = result.proxy.unwrap();
         assert_eq!(proxy.host, "127.0.0.1");
         assert_eq!(proxy.port, 1080);
     }
 
-    #[test]
-    fn proxy_url_none_is_none() {
+    #[tokio::test]
+    async fn proxy_url_none_is_none() {
         let cfg = default_gui_config();
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert!(result.proxy.is_none());
     }
 
-    #[test]
-    fn proxy_url_invalid_returns_error() {
+    #[tokio::test]
+    async fn proxy_url_invalid_returns_error() {
         let mut cfg = default_gui_config();
         cfg.proxy_url = Some("http://not-socks".into());
-        let err = cfg.into_scan_config().unwrap_err();
+        let err = cfg.into_scan_config().await.unwrap_err();
         assert!(err.contains("proxy"), "got: {err}");
     }
 
-    #[test]
-    fn decoys_propagate() {
+    #[tokio::test]
+    async fn decoys_propagate() {
         let mut cfg = default_gui_config();
         cfg.decoys = Some("10.0.0.1, 10.0.0.2".into());
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert_eq!(result.decoys.len(), 2);
         assert_eq!(result.decoys[0].to_string(), "10.0.0.1");
         assert_eq!(result.decoys[1].to_string(), "10.0.0.2");
     }
 
-    #[test]
-    fn decoys_invalid_returns_error() {
+    #[tokio::test]
+    async fn decoys_invalid_returns_error() {
         let mut cfg = default_gui_config();
         cfg.decoys = Some("not-an-ip".into());
-        let err = cfg.into_scan_config().unwrap_err();
+        let err = cfg.into_scan_config().await.unwrap_err();
         assert!(err.contains("decoy"), "got: {err}");
     }
 
-    #[test]
-    fn pre_resolved_up_propagates() {
+    #[tokio::test]
+    async fn pre_resolved_up_propagates() {
         let mut cfg = default_gui_config();
         cfg.pre_resolved_up = Some("192.168.1.1, 192.168.1.2".into());
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert_eq!(result.pre_resolved_up.len(), 2);
     }
 
-    #[test]
-    fn pre_resolved_up_invalid_returns_error() {
+    #[tokio::test]
+    async fn pre_resolved_up_invalid_returns_error() {
         let mut cfg = default_gui_config();
         cfg.pre_resolved_up = Some("bad-ip".into());
-        let err = cfg.into_scan_config().unwrap_err();
+        let err = cfg.into_scan_config().await.unwrap_err();
         assert!(err.contains("pre-resolved"), "got: {err}");
     }
 
     // --- Custom payload ---
 
-    #[test]
-    fn payload_none_is_none() {
+    #[tokio::test]
+    async fn payload_none_is_none() {
         let cfg = default_gui_config();
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert!(result.custom_payload.is_none());
     }
 
-    #[test]
-    fn payload_hex_propagates() {
+    #[tokio::test]
+    async fn payload_hex_propagates() {
         let mut cfg = default_gui_config();
         cfg.payload_type = "hex".into();
         cfg.payload_value = Some("deadbeef".into());
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert_eq!(result.custom_payload.unwrap(), vec![0xde, 0xad, 0xbe, 0xef]);
     }
 
-    #[test]
-    fn payload_hex_with_prefix() {
+    #[tokio::test]
+    async fn payload_hex_with_prefix() {
         let mut cfg = default_gui_config();
         cfg.payload_type = "hex".into();
         cfg.payload_value = Some("0xCAFE".into());
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert_eq!(result.custom_payload.unwrap(), vec![0xca, 0xfe]);
     }
 
-    #[test]
-    fn payload_hex_invalid_returns_error() {
+    #[tokio::test]
+    async fn payload_hex_invalid_returns_error() {
         let mut cfg = default_gui_config();
         cfg.payload_type = "hex".into();
         cfg.payload_value = Some("abc".into()); // odd length
-        let err = cfg.into_scan_config().unwrap_err();
+        let err = cfg.into_scan_config().await.unwrap_err();
         assert!(err.contains("even number"), "got: {err}");
     }
 
-    #[test]
-    fn payload_string_propagates() {
+    #[tokio::test]
+    async fn payload_string_propagates() {
         let mut cfg = default_gui_config();
         cfg.payload_type = "string".into();
         cfg.payload_value = Some("HELLO".into());
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert_eq!(result.custom_payload.unwrap(), b"HELLO");
     }
 
-    #[test]
-    fn payload_length_propagates() {
+    #[tokio::test]
+    async fn payload_length_propagates() {
         let mut cfg = default_gui_config();
         cfg.payload_type = "length".into();
         cfg.payload_value = Some("32".into());
-        let result = cfg.into_scan_config().unwrap();
+        let result = cfg.into_scan_config().await.unwrap();
         assert_eq!(result.custom_payload.unwrap().len(), 32);
     }
 
-    #[test]
-    fn payload_length_too_large_returns_error() {
+    #[tokio::test]
+    async fn payload_length_too_large_returns_error() {
         let mut cfg = default_gui_config();
         cfg.payload_type = "length".into();
         cfg.payload_value = Some("99999".into());
-        let err = cfg.into_scan_config().unwrap_err();
+        let err = cfg.into_scan_config().await.unwrap_err();
         assert!(err.contains("65400"), "got: {err}");
     }
 }
