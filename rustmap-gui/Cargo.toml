@@ -21,9 +21,12 @@ rustmap-db     = { workspace = true }
 rustmap-script = { workspace = true }
 rustmap-detect = { workspace = true }
 rustmap-geoip  = { workspace = true }
-tauri          = { version = "2", features = ["devtools"] }
+rustmap-vuln   = { workspace = true }
+tauri          = { version = "2", features = [] }
 tauri-plugin-shell = "2"
 tauri-plugin-dialog = "2"
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
 tokio          = { workspace = true }
 tokio-util     = { workspace = true }
 serde          = { workspace = true }
@@ -37,3 +40,4 @@ tauri-build = { version = "2", features = [] }
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
+devtools = ["tauri/devtools"]

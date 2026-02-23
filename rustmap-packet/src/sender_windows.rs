@@ -94,6 +94,11 @@ impl NpcapSender {
     pub fn src_ip(&self) -> IpAddr {
         self.src_ip
     }
+
+    /// Override the source MAC address for Ethernet framing (--spoof-mac).
+    pub fn set_spoof_mac(&mut self, mac: [u8; 6]) {
+        self.src_mac = mac;
+    }
 }
 
 /// Resolve source and destination MAC addresses for packet construction.

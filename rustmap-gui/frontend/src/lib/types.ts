@@ -24,7 +24,8 @@ export interface Host {
 export type HostStatus = "Up" | "Down" | "Unknown";
 
 // Rust PortState uses #[serde(rename_all = "lowercase")]
-export type PortState = "open" | "closed" | "filtered" | "unfiltered" | "open|filtered" | "closed|filtered";
+// OpenFiltered → "openfiltered", ClosedFiltered → "closedfiltered"
+export type PortState = "open" | "closed" | "filtered" | "unfiltered" | "openfiltered" | "closedfiltered";
 
 // Matches Rust ServiceInfo struct
 export interface ServiceInfo {
@@ -212,6 +213,19 @@ export interface GuiScanConfig {
   script_args: string | null;
   custom_script_paths: string[];
   geoip_enabled: boolean;
+  spoof_mac: string | null;
+  ip_ttl: number | null;
+  badsum: boolean;
+  top_ports: number | null;
+  ipv6_only: boolean;
+  watch_enabled: boolean;
+  watch_interval_secs: number;
+}
+
+export interface WatchIterationPayload {
+  scan_id: string;
+  iteration: number;
+  diff: ScanDiff | null;
 }
 
 export interface ScriptInfo {
@@ -270,12 +284,6 @@ export interface HostResultPayload {
   hosts_total: number;
 }
 
-export interface ScanProgressPayload {
-  scan_id: string;
-  hosts_completed: number;
-  hosts_total: number;
-}
-
 export interface ScanCompletePayload {
   scan_id: string;
   result: ScanResult;
@@ -296,4 +304,36 @@ export interface PresetInfo {
   targets: string;
   scan_type: string;
   port_summary: string;
+}
+
+// Vulnerability types (from rustmap-vuln)
+export interface VulnMatch {
+  cve_id: string;
+  cvss_score: number | null;
+  description: string;
+  matched_product: string;
+  matched_version: string;
+}
+
+export interface PortVulnResult {
+  port: number;
+  protocol: string;
+  product: string | null;
+  version: string | null;
+  vulns: VulnMatch[];
+}
+
+export interface HostVulnResult {
+  ip: string;
+  port_vulns: PortVulnResult[];
+  risk_score: number | null;
+}
+
+// Checkpoint / Resume types
+export interface CheckpointInfo {
+  scan_id: string;
+  created_at: number;
+  updated_at: number;
+  total_hosts: number;
+  completed_count: number;
 }

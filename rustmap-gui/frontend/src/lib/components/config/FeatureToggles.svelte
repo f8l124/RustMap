@@ -36,6 +36,10 @@
     label="GeoIP Tagging (--geoip)"
     bind:checked={scanConfig.geoipEnabled}
   />
+  <Toggle
+    label="IPv6 Only (-6)"
+    bind:checked={scanConfig.ipv6Only}
+  />
 </div>
 
 <style>

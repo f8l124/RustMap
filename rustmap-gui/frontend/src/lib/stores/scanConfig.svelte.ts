@@ -42,6 +42,13 @@ class ScanConfigStore {
   scriptArgs = $state("");
   customScriptPaths = $state<string[]>([]);
   geoipEnabled = $state(false);
+  spoofMac = $state("");
+  ipTtl = $state<number | null>(null);
+  badsum = $state(false);
+  topPorts = $state<number | null>(null);
+  ipv6Only = $state(false);
+  watchEnabled = $state(false);
+  watchIntervalSecs = $state(300);
 
   get configValid(): boolean {
     return this.targets.trim().length > 0;
@@ -95,6 +102,13 @@ class ScanConfigStore {
       script_args: this.scriptArgs.trim() || null,
       custom_script_paths: this.customScriptPaths,
       geoip_enabled: this.geoipEnabled,
+      spoof_mac: this.spoofMac.trim() || null,
+      ip_ttl: this.ipTtl,
+      badsum: this.badsum,
+      top_ports: this.topPorts,
+      ipv6_only: this.ipv6Only,
+      watch_enabled: this.watchEnabled,
+      watch_interval_secs: this.watchIntervalSecs,
     };
   }
 
@@ -140,6 +154,13 @@ class ScanConfigStore {
     this.scriptArgs = "";
     this.customScriptPaths = [];
     this.geoipEnabled = false;
+    this.spoofMac = "";
+    this.ipTtl = null;
+    this.badsum = false;
+    this.topPorts = null;
+    this.ipv6Only = false;
+    this.watchEnabled = false;
+    this.watchIntervalSecs = 300;
   }
 
   loadFromConfig(config: GuiScanConfig) {
@@ -184,6 +205,13 @@ class ScanConfigStore {
     this.scriptArgs = config.script_args ?? "";
     this.customScriptPaths = config.custom_script_paths;
     this.geoipEnabled = config.geoip_enabled;
+    this.spoofMac = config.spoof_mac ?? "";
+    this.ipTtl = config.ip_ttl ?? null;
+    this.badsum = config.badsum ?? false;
+    this.topPorts = config.top_ports ?? null;
+    this.ipv6Only = config.ipv6_only ?? false;
+    this.watchEnabled = config.watch_enabled ?? false;
+    this.watchIntervalSecs = config.watch_interval_secs ?? 300;
   }
 }
 

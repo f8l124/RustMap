@@ -85,6 +85,17 @@ class ScanStateStore {
     this.hostsTotal = payload.hosts_total;
   }
 
+  onHostResultBatch(payloads: HostResultPayload[]) {
+    for (const p of payloads) {
+      this.hostResults.push(p.result);
+    }
+    // Single reactivity trigger for the entire batch
+    this.hostResults = this.hostResults;
+    const last = payloads[payloads.length - 1];
+    this.hostsCompleted = last.hosts_completed;
+    this.hostsTotal = last.hosts_total;
+  }
+
   onScanComplete(result: ScanResult) {
     this.phase = "complete";
     this.finalResult = result;

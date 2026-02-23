@@ -345,6 +345,12 @@ pub struct ScanConfig {
     pub proxy: Option<ProxyConfig>,
     /// Perform path MTU discovery (IPv4 only).
     pub mtu_discovery: bool,
+    /// Override IP TTL/hop-limit on outgoing probes (None = default 64).
+    pub ip_ttl: Option<u8>,
+    /// Intentionally corrupt TCP/UDP checksums (firewall rule testing).
+    pub badsum: bool,
+    /// Spoof Ethernet source MAC address (None = real adapter MAC).
+    pub spoof_mac: Option<[u8; 6]>,
 }
 
 impl ScanConfig {
@@ -423,6 +429,9 @@ impl Default for ScanConfig {
             pre_resolved_up: Vec::new(),
             proxy: None,
             mtu_discovery: false,
+            ip_ttl: None,
+            badsum: false,
+            spoof_mac: None,
         }
     }
 }

@@ -1,8 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
+  CheckpointInfo,
   GuiScanConfig,
+  HostVulnResult,
   PresetInfo,
   PrivilegeInfo,
+  ScanDiff,
   ScanHistoryEntry,
   ScriptInfo,
 } from "../types";
@@ -24,6 +27,10 @@ export async function exportResults(
   format: string,
 ): Promise<string> {
   return invoke<string>("export_results", { scanId, format });
+}
+
+export async function deleteScanHistory(scanId: string): Promise<boolean> {
+  return invoke<boolean>("delete_scan_history", { scanId });
 }
 
 export async function clearScanHistory(): Promise<number> {
@@ -83,4 +90,34 @@ export async function importScanFromFile(
 
 export async function getAppVersion(): Promise<string> {
   return invoke<string>("get_app_version");
+}
+
+export async function diffScans(
+  oldScanId: string,
+  newScanId: string,
+): Promise<ScanDiff> {
+  return invoke<ScanDiff>("diff_scans", { oldScanId, newScanId });
+}
+
+export async function checkVulns(
+  scanId: string,
+  minCvss?: number,
+): Promise<HostVulnResult[]> {
+  return invoke<HostVulnResult[]>("check_vulns", { scanId, minCvss: minCvss ?? null });
+}
+
+export async function seedVulnDb(): Promise<void> {
+  return invoke<void>("seed_vuln_db");
+}
+
+export async function startWatch(config: GuiScanConfig): Promise<string> {
+  return invoke<string>("start_watch", { config });
+}
+
+export async function listCheckpoints(): Promise<CheckpointInfo[]> {
+  return invoke<CheckpointInfo[]>("list_checkpoints");
+}
+
+export async function resumeScan(scanId: string): Promise<string> {
+  return invoke<string>("resume_scan", { scanId });
 }

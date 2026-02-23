@@ -8,7 +8,7 @@ use tracing::{debug, info, warn};
 
 use rustmap_packet::{
     CaptureConfig, CapturedResponse, PacketReceiver, PacketSender, ResponseType, TcpFlags,
-    create_capture, create_sender, fixed_port_bpf_filter, fragment_ipv4_packet, rand_seq,
+    create_capture, fixed_port_bpf_filter, fragment_ipv4_packet, rand_seq,
 };
 use rustmap_timing::{TimingController, TimingParams};
 use rustmap_types::{Host, HostScanResult, Port, PortState, ScanConfig, TimingSnapshot};
@@ -135,7 +135,9 @@ impl Scanner for RawTcpScanner {
         let timing = Arc::new(TimingController::new(params));
 
         // Create packet sender and capture on the same interface
-        let sender: Arc<dyn PacketSender> = Arc::from(create_sender(target_ip)?);
+        let sender: Arc<dyn PacketSender> = Arc::from(
+            rustmap_packet::create_sender_with_options(target_ip, config.spoof_mac)?,
+        );
 
         // Use fixed-port BPF filter when source port is specified
         let bpf_filter = match config.source_port {
@@ -165,6 +167,8 @@ impl Scanner for RawTcpScanner {
         let no_response_state = self.policy.on_no_response;
         let decoys = config.decoys.clone();
         let fragment_packets = config.fragment_packets;
+        let ip_ttl = config.ip_ttl;
+        let badsum = config.badsum;
 
         // Spawn the three concurrent tasks
         let send_handle = {
@@ -188,6 +192,8 @@ impl Scanner for RawTcpScanner {
                     no_response_state,
                     &decoys,
                     fragment_packets,
+                    ip_ttl,
+                    badsum,
                 )
                 .await;
                 debug!(scan = scan_name, "send loop finished");
@@ -234,6 +240,8 @@ impl Scanner for RawTcpScanner {
                     flags,
                     no_response_state,
                     fragment_packets,
+                    ip_ttl,
+                    badsum,
                 )
                 .await;
                 debug!(scan = scan_name, "timeout checker finished");
@@ -336,6 +344,8 @@ async fn send_loop(
     no_response_state: PortState,
     decoys: &[IpAddr],
     fragment_packets: bool,
+    ip_ttl: Option<u8>,
+    badsum: bool,
 ) {
     for &dst_port in ports {
         // Wait for a send slot (respects cwnd + rate limit)
@@ -347,8 +357,28 @@ async fn send_loop(
         // Register the probe before sending
         tracker.register_probe(dst_ip, dst_port, src_port, rto, max_retries);
 
-        // Send the TCP packet, optionally fragmenting for IDS evasion
-        let send_result = if fragment_packets && dst_ip.is_ipv4() {
+        // Send the TCP packet, optionally with TTL/badsum overrides and fragmentation
+        let send_result = if ip_ttl.is_some() || badsum {
+            // Build packet manually to apply evasion overrides
+            match rustmap_packet::build::build_tcp_packet(
+                src_ip, src_port, dst_ip, dst_port, rand_seq(), flags,
+            ) {
+                Ok(mut pkt) => {
+                    if let Some(ttl) = ip_ttl {
+                        rustmap_packet::build::patch_ip_ttl(&mut pkt, ttl);
+                    }
+                    if badsum {
+                        rustmap_packet::build::corrupt_checksum(&mut pkt);
+                    }
+                    if fragment_packets && dst_ip.is_ipv4() {
+                        send_fragmented_raw(sender, &pkt, dst_ip).await
+                    } else {
+                        sender.send_raw(src_ip, dst_ip, &pkt).await
+                    }
+                }
+                Err(e) => Err(e),
+            }
+        } else if fragment_packets && dst_ip.is_ipv4() {
             send_fragmented_tcp(sender, src_ip, src_port, dst_ip, dst_port, flags).await
         } else {
             sender
@@ -509,11 +539,13 @@ async fn timeout_checker(
     flags: TcpFlags,
     no_response_state: PortState,
     fragment_packets: bool,
+    ip_ttl: Option<u8>,
+    badsum: bool,
 ) {
     loop {
         tokio::select! {
             _ = tokio::time::sleep(Duration::from_millis(50)) => {
-                check_timeouts(sender, src_ip, dst_ip, timing, tracker, port_alloc, flags, no_response_state, fragment_packets).await;
+                check_timeouts(sender, src_ip, dst_ip, timing, tracker, port_alloc, flags, no_response_state, fragment_packets, ip_ttl, badsum).await;
             }
             _ = done.notified() => {
                 break;
@@ -534,6 +566,8 @@ async fn check_timeouts(
     flags: TcpFlags,
     no_response_state: PortState,
     fragment_packets: bool,
+    ip_ttl: Option<u8>,
+    badsum: bool,
 ) {
     let (retryable, expired) = tracker.collect_timed_out();
 
@@ -550,7 +584,26 @@ async fn check_timeouts(
 
             tracker.register_probe(dst_ip, dst_port, new_src_port, new_rto, retries);
 
-            let send_result = if fragment_packets && dst_ip.is_ipv4() {
+            let send_result = if ip_ttl.is_some() || badsum {
+                match rustmap_packet::build::build_tcp_packet(
+                    src_ip, new_src_port, dst_ip, dst_port, rand_seq(), flags,
+                ) {
+                    Ok(mut pkt) => {
+                        if let Some(ttl) = ip_ttl {
+                            rustmap_packet::build::patch_ip_ttl(&mut pkt, ttl);
+                        }
+                        if badsum {
+                            rustmap_packet::build::corrupt_checksum(&mut pkt);
+                        }
+                        if fragment_packets && dst_ip.is_ipv4() {
+                            send_fragmented_raw(sender, &pkt, dst_ip).await
+                        } else {
+                            sender.send_raw(src_ip, dst_ip, &pkt).await
+                        }
+                    }
+                    Err(e) => Err(e),
+                }
+            } else if fragment_packets && dst_ip.is_ipv4() {
                 send_fragmented_tcp(sender, src_ip, new_src_port, dst_ip, dst_port, flags).await
             } else {
                 sender
@@ -604,6 +657,26 @@ async fn send_fragmented_tcp(
         flags,
     )?;
     let fragments = fragment_ipv4_packet(&pkt)?;
+    for frag in &fragments {
+        sender.send_raw(src_ip, dst_ip, frag).await?;
+    }
+    Ok(())
+}
+
+/// Fragment and send a pre-built IP packet (used when TTL/badsum overrides are active).
+async fn send_fragmented_raw(
+    sender: &dyn PacketSender,
+    packet: &[u8],
+    dst_ip: IpAddr,
+) -> Result<(), rustmap_packet::PacketError> {
+    let src_ip = if packet.len() >= 20 {
+        IpAddr::V4(std::net::Ipv4Addr::new(
+            packet[12], packet[13], packet[14], packet[15],
+        ))
+    } else {
+        dst_ip
+    };
+    let fragments = fragment_ipv4_packet(packet)?;
     for frag in &fragments {
         sender.send_raw(src_ip, dst_ip, frag).await?;
     }

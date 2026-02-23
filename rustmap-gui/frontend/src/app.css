@@ -1,5 +1,6 @@
-/* RustMap dark theme design tokens */
-:root {
+/* RustMap design tokens — dark theme (default) */
+:root,
+[data-theme="dark"] {
   /* Backgrounds (3-level depth) */
   --bg-base: #0f1117;
   --bg-surface: #161822;
@@ -47,6 +48,33 @@
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
+}
+
+/* Light theme */
+[data-theme="light"] {
+  --bg-base: #f5f6f8;
+  --bg-surface: #ffffff;
+  --bg-elevated: #ebedf2;
+
+  --text-primary: #1a1a2e;
+  --text-secondary: #555570;
+  --text-muted: #9090a0;
+
+  --accent: #2563eb;
+  --accent-hover: #3b82f6;
+  --accent-muted: #bfdbfe;
+
+  --port-open: #16a085;
+  --port-closed: #e74c3c;
+  --port-filtered: #e67e22;
+
+  --status-success: #16a085;
+  --status-error: #e74c3c;
+  --status-warning: #e67e22;
+  --status-info: #2563eb;
+
+  --border-subtle: #e2e4ea;
+  --border-default: #d0d3dc;
 }
 
 /* Base reset and styles */

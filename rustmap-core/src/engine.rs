@@ -795,6 +795,9 @@ mod tests {
             pre_resolved_up: vec![],
             proxy: None,
             mtu_discovery: false,
+            ip_ttl: None,
+            badsum: false,
+            spoof_mac: None,
         }
     }
 

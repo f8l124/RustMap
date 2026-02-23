@@ -4,12 +4,14 @@
   let preset = $state("default");
 
   function onPresetChange() {
+    scanConfig.topPorts = null;
     switch (preset) {
       case "default":
         scanConfig.ports = "";
         break;
       case "top100":
         scanConfig.ports = "";
+        scanConfig.topPorts = 100;
         break;
       case "all":
         scanConfig.ports = "1-65535";

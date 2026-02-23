@@ -1,7 +1,7 @@
 import type { PrivilegeInfo } from "../types";
 
 class PrivilegesStore {
-  info = $state<PrivilegeInfo>({ raw_socket: false, pcap: false });
+  info = $state<PrivilegeInfo>({ raw_socket: false, pcap: false, npcap_installed: false });
 
   set(info: PrivilegeInfo) {
     this.info = info;

@@ -9,8 +9,17 @@ use crate::traits::PacketSender;
 /// - Linux: raw socket with IP_HDRINCL
 /// - Windows: Npcap packet injection
 pub fn create_sender(target_ip: IpAddr) -> Result<Box<dyn PacketSender>, PacketError> {
+    create_sender_with_options(target_ip, None)
+}
+
+/// Create a packet sender with optional MAC spoofing.
+pub fn create_sender_with_options(
+    target_ip: IpAddr,
+    spoof_mac: Option<[u8; 6]>,
+) -> Result<Box<dyn PacketSender>, PacketError> {
     #[cfg(target_os = "linux")]
     {
+        let _ = spoof_mac; // MAC spoofing not applicable to raw sockets
         use crate::sender_linux::RawSocketSender;
         let sender = RawSocketSender::new(get_local_ip(target_ip)?)?;
         Ok(Box::new(sender))
@@ -18,12 +27,15 @@ pub fn create_sender(target_ip: IpAddr) -> Result<Box<dyn PacketSender>, PacketE
     #[cfg(windows)]
     {
         use crate::sender_windows::NpcapSender;
-        let sender = NpcapSender::new(target_ip)?;
+        let mut sender = NpcapSender::new(target_ip)?;
+        if let Some(mac) = spoof_mac {
+            sender.set_spoof_mac(mac);
+        }
         Ok(Box::new(sender))
     }
     #[cfg(not(any(target_os = "linux", windows)))]
     {
-        let _ = target_ip;
+        let _ = (target_ip, spoof_mac);
         Err(PacketError::SendFailed(
             "raw packet sending not supported on this platform".into(),
         ))

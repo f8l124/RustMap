@@ -15,8 +15,8 @@
       case "closed":
         return "state-closed";
       case "filtered":
-      case "open|filtered":
-      case "closed|filtered":
+      case "openfiltered":
+      case "closedfiltered":
       case "unfiltered":
         return "state-filtered";
       default:

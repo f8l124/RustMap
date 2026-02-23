@@ -23,6 +23,7 @@
     }
   },
   "bundle": {
+    "createUpdaterArtifacts": true,
     "externalBin": [
       "binaries/rustmap"
     ],
@@ -35,6 +36,14 @@
         "installMode": "both",
         "installerHooks": "./windows/hooks.nsh"
       }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/f8l124/RustMap/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDIwNTQxODA5NzFCM0FEQjYKUldTMnJiTnhDUmhVSUwybmg1YXpUczVqOWlKZVNvUGVYdlU1L3BqK2FacVZmYTFaR0YxdG9sSXkK"
     }
   }
 }

@@ -9,6 +9,9 @@
   import { scanConfig } from "./lib/stores/scanConfig.svelte";
   import { handleGlobalKeydown, registerShortcut } from "./lib/utils/shortcuts";
   import { parseError } from "./lib/utils/errorParser";
+  import ToastContainer from "./lib/components/shared/ToastContainer.svelte";
+  import { toasts } from "./lib/stores/toast.svelte";
+  import { updater } from "./lib/stores/updater.svelte";
 
   let showShortcuts = $state(false);
 
@@ -17,6 +20,8 @@
     checkPrivileges().then((info) => {
       privileges.set(info);
     });
+    // Check for updates after a brief delay to avoid blocking startup
+    setTimeout(() => updater.checkForUpdates(), 3000);
 
     const unregister = [
       registerShortcut({
@@ -63,8 +68,9 @@
           try {
             const output = await exportResults(scanState.scanId, "json");
             await navigator.clipboard.writeText(output);
+            toasts.success("Results copied to clipboard");
           } catch (e) {
-            console.error("Export failed:", e);
+            toasts.error("Export failed: " + String(e));
           }
         },
       }),
@@ -118,3 +124,4 @@
 
 <Layout />
 <ShortcutsHelp visible={showShortcuts} onclose={() => (showShortcuts = false)} />
+<ToastContainer />

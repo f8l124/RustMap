@@ -11,7 +11,7 @@
 </script>
 
 <div class="collapsible">
-  <button class="header" onclick={() => (open = !open)}>
+  <button class="header" aria-expanded={open} onclick={() => (open = !open)}>
     <span class="arrow" class:open>{open ? "\u25BC" : "\u25B6"}</span>
     <span class="title">{title}</span>
   </button>

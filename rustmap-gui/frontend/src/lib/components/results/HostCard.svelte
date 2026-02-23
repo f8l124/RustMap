@@ -34,8 +34,7 @@
 </script>
 
 <div class="host-card" class:expanded class:has-error={hasScanError}>
-  <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <div class="card-header" role="button" tabindex="0" onclick={() => (expanded = !expanded)}>
+  <div class="card-header" role="button" tabindex="0" onclick={() => (expanded = !expanded)} onkeydown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); expanded = !expanded; } }}>
     <span class="host-ip mono">{hostResult.host.ip}</span>
     {#if hostResult.host.hostname}
       <span class="hostname text-muted">({hostResult.host.hostname})</span>

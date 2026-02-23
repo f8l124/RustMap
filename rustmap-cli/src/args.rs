@@ -227,6 +227,18 @@ pub struct Args {
     #[arg(long = "data-length", value_name = "N")]
     pub data_length: Option<usize>,
 
+    /// Spoof Ethernet source MAC address (e.g., AA:BB:CC:DD:EE:FF or "random")
+    #[arg(long = "spoof-mac", value_name = "MAC")]
+    pub spoof_mac: Option<String>,
+
+    /// Set IP TTL (time-to-live) on outgoing probes
+    #[arg(long = "ttl", value_name = "VALUE")]
+    pub ttl: Option<u8>,
+
+    /// Send packets with intentionally wrong checksums (firewall rule testing)
+    #[arg(long = "badsum")]
+    pub badsum: bool,
+
     /// Perform traceroute after port scan
     #[arg(long = "traceroute")]
     pub traceroute: bool,

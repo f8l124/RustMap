@@ -2,7 +2,7 @@
   import { scanConfig } from "../../stores/scanConfig.svelte";
   import { scanState } from "../../stores/scanState.svelte";
   import { resultFilter } from "../../stores/resultFilter.svelte";
-  import { startScan, stopScan } from "../../tauri/commands";
+  import { startScan, startWatch, stopScan } from "../../tauri/commands";
   import { parseError } from "../../utils/errorParser";
 
   async function handleScan() {
@@ -10,7 +10,11 @@
     scanState.onStarting();
     resultFilter.reset();
     try {
-      await startScan(scanConfig.config);
+      if (scanConfig.watchEnabled) {
+        await startWatch(scanConfig.config);
+      } else {
+        await startScan(scanConfig.config);
+      }
     } catch (e) {
       const { message, kind } = parseError(e);
       scanState.onScanError(message, kind);
@@ -49,7 +53,7 @@
       onclick={handleScan}
       disabled={!scanConfig.configValid}
     >
-      Scan
+      {scanConfig.watchEnabled ? "Watch" : "Scan"}
     </button>
   {/if}
 </div>

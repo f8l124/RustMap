@@ -5,6 +5,7 @@ use rustmap_timing::TimingParams;
 use rustmap_types::{
     DiscoveryConfig, DiscoveryMethod, DiscoveryMode, DnsConfig, OsDetectionConfig, PortRange,
     ProxyConfig, ScanConfig, ScanType, ServiceDetectionConfig, TimingTemplate, top_tcp_ports,
+    top_udp_ports,
 };
 use serde::{Deserialize, Serialize};
 
@@ -55,6 +56,19 @@ pub struct GuiScanConfig {
     pub script_args: Option<String>,
     pub custom_script_paths: Vec<String>,
     pub geoip_enabled: bool,
+    pub spoof_mac: Option<String>,
+    pub ip_ttl: Option<u8>,
+    pub badsum: bool,
+    pub top_ports: Option<usize>,
+    pub ipv6_only: bool,
+    #[serde(default)]
+    pub watch_enabled: bool,
+    #[serde(default = "default_watch_interval")]
+    pub watch_interval_secs: u64,
+}
+
+fn default_watch_interval() -> u64 {
+    300
 }
 
 fn parse_port_list_opt(s: &Option<String>) -> Result<Option<Vec<u16>>, String> {
@@ -90,14 +104,46 @@ impl GuiScanConfig {
             return Err("no valid targets specified".into());
         }
 
-        // Parse ports
-        let ports = if let Some(ref port_spec) = self.ports {
-            PortRange::parse(port_spec)
-                .map_err(|e| format!("invalid port specification: {e}"))?
-                .expand()
-        } else {
-            top_tcp_ports(1000)
+        // IPv6-only mode: filter out IPv4 addresses (like nmap -6)
+        if self.ipv6_only {
+            hosts.retain(|h| h.ip.is_ipv6());
+            if hosts.is_empty() {
+                return Err("no IPv6 targets found (ipv6_only is enabled)".into());
+            }
+        }
+
+        // Parse ports — use UDP-specific top ports when scan type is UDP
+        let is_udp = self.scan_type == "U";
+        let default_top_ports = |n: usize| {
+            if is_udp { top_udp_ports(n) } else { top_tcp_ports(n) }
         };
+        let ports = if let Some(ref port_spec) = self.ports {
+            if port_spec.trim().is_empty() {
+                if let Some(n) = self.top_ports {
+                    if n == 0 {
+                        return Err("top_ports must be at least 1".into());
+                    }
+                    default_top_ports(n)
+                } else {
+                    default_top_ports(1000)
+                }
+            } else {
+                PortRange::parse(port_spec)
+                    .map_err(|e| format!("invalid port specification: {e}"))?
+                    .expand()
+            }
+        } else if let Some(n) = self.top_ports {
+            if n == 0 {
+                return Err("top_ports must be at least 1".into());
+            }
+            default_top_ports(n)
+        } else {
+            default_top_ports(1000)
+        };
+
+        if ports.is_empty() {
+            return Err("port specification resulted in an empty port list".into());
+        }
 
         // Map scan type string to enum
         let scan_type = match self.scan_type.as_str() {
@@ -126,17 +172,24 @@ impl GuiScanConfig {
         };
 
         // Resolve timing-aware defaults: 0 means "auto from template"
+        // Clamp values to prevent resource exhaustion (mirrors API crate guards)
         let timing_params = TimingParams::from_template(timing_template);
         let concurrency = if self.concurrency == 0 {
             timing_params.connect_concurrency
         } else {
-            self.concurrency
+            self.concurrency.min(10_000)
         };
         let timeout = if self.timeout_ms == 0 {
             timing_params.connect_timeout
         } else {
-            Duration::from_millis(self.timeout_ms)
+            Duration::from_millis(self.timeout_ms.clamp(1, 3_600_000))
         };
+        let host_timeout_ms = if self.host_timeout_ms > 0 {
+            self.host_timeout_ms.clamp(1, 3_600_000)
+        } else {
+            0 // 0 means no per-host timeout
+        };
+        let max_hostgroup = self.max_hostgroup.min(65_536);
 
         // Discovery config
         let discovery = match self.discovery_mode.as_str() {
@@ -182,7 +235,7 @@ impl GuiScanConfig {
             _ => DiscoveryConfig::default(),
         };
 
-        Ok(ScanConfig {
+        let config = ScanConfig {
             targets: hosts,
             ports,
             scan_type,
@@ -206,8 +259,8 @@ impl GuiScanConfig {
                 enabled: self.os_detection,
             },
             min_hostgroup: self.min_hostgroup,
-            max_hostgroup: self.max_hostgroup,
-            host_timeout: Duration::from_millis(self.host_timeout_ms),
+            max_hostgroup,
+            host_timeout: Duration::from_millis(host_timeout_ms),
             min_rate: self.min_rate,
             max_rate: self.max_rate,
             randomize_ports: self.randomize_ports,
@@ -233,7 +286,10 @@ impl GuiScanConfig {
                     if hex.is_empty() {
                         None
                     } else {
-                        if hex.len() % 2 != 0 {
+                        if !hex.is_ascii() {
+                            return Err("hex payload must contain only ASCII characters".into());
+                        }
+                        if !hex.len().is_multiple_of(2) {
                             return Err("hex payload must have even number of characters".into());
                         }
                         let bytes: Vec<u8> = (0..hex.len())
@@ -306,7 +362,43 @@ impl GuiScanConfig {
                 None
             },
             mtu_discovery: self.mtu_discovery,
-        })
+            ip_ttl: self.ip_ttl,
+            badsum: self.badsum,
+            spoof_mac: if let Some(ref mac_str) = self.spoof_mac {
+                let s = mac_str.trim();
+                if s.is_empty() {
+                    None
+                } else if s.eq_ignore_ascii_case("random") {
+                    use rand::Rng;
+                    let mut mac = [0u8; 6];
+                    rand::thread_rng().fill(&mut mac);
+                    mac[0] &= 0xFE; // unicast
+                    mac[0] |= 0x02; // locally administered
+                    Some(mac)
+                } else {
+                    let sep = if s.contains(':') { ':' } else { '-' };
+                    let parts: Vec<&str> = s.split(sep).collect();
+                    if parts.len() != 6 {
+                        return Err("spoof MAC must be 6 hex octets (AA:BB:CC:DD:EE:FF) or 'random'".into());
+                    }
+                    let mut mac = [0u8; 6];
+                    for (i, part) in parts.iter().enumerate() {
+                        mac[i] = u8::from_str_radix(part, 16)
+                            .map_err(|_| format!("invalid hex octet in MAC: '{part}'"))?;
+                    }
+                    Some(mac)
+                }
+            } else {
+                None
+            },
+        };
+
+        // Validate invariants (min_hostgroup <= max_hostgroup, intensity <= 9, etc.)
+        if let Err(errors) = config.validate() {
+            return Err(errors.join("; "));
+        }
+
+        Ok(config)
     }
 }
 
@@ -357,6 +449,13 @@ mod tests {
             script_args: None,
             custom_script_paths: vec![],
             geoip_enabled: false,
+            spoof_mac: None,
+            ip_ttl: None,
+            badsum: false,
+            top_ports: None,
+            ipv6_only: false,
+            watch_enabled: false,
+            watch_interval_secs: 300,
         }
     }
 
@@ -909,5 +1008,36 @@ mod tests {
         cfg.payload_value = Some("99999".into());
         let err = cfg.into_scan_config().await.unwrap_err();
         assert!(err.contains("65400"), "got: {err}");
+    }
+
+    // --- IPv6-only mode ---
+
+    #[tokio::test]
+    async fn ipv6_only_filters_ipv4_targets() {
+        let mut cfg = default_gui_config();
+        cfg.targets = vec!["127.0.0.1".into()];
+        cfg.ipv6_only = true;
+        let err = cfg.into_scan_config().await.unwrap_err();
+        assert!(err.contains("no IPv6 targets"), "got: {err}");
+    }
+
+    #[tokio::test]
+    async fn ipv6_only_keeps_ipv6_targets() {
+        let mut cfg = default_gui_config();
+        cfg.targets = vec!["::1".into()];
+        cfg.ipv6_only = true;
+        let result = cfg.into_scan_config().await.unwrap();
+        assert_eq!(result.targets.len(), 1);
+        assert!(result.targets[0].ip.is_ipv6());
+    }
+
+    #[tokio::test]
+    async fn ipv6_only_false_keeps_all() {
+        let mut cfg = default_gui_config();
+        cfg.targets = vec!["127.0.0.1".into()];
+        cfg.ipv6_only = false;
+        let result = cfg.into_scan_config().await.unwrap();
+        assert_eq!(result.targets.len(), 1);
+        assert!(result.targets[0].ip.is_ipv4());
     }
 }

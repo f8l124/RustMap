@@ -134,10 +134,28 @@
         bind:value={scanConfig.probeTimeoutMs}
       />
     </div>
+    <div class="field">
+      <label for="ip-ttl" class="label">IP TTL</label>
+      <input
+        id="ip-ttl"
+        type="number"
+        class="input"
+        min="1"
+        max="255"
+        placeholder="—"
+        bind:value={scanConfig.ipTtl}
+      />
+    </div>
     <div class="field toggle-field">
       <Toggle
         label="Fragment Packets (-f)"
         bind:checked={scanConfig.fragmentPackets}
+      />
+    </div>
+    <div class="field toggle-field">
+      <Toggle
+        label="Bad Checksum (--badsum)"
+        bind:checked={scanConfig.badsum}
       />
     </div>
   </div>
@@ -171,6 +189,16 @@
         class="input"
         placeholder="192.168.1.1, 192.168.1.2"
         bind:value={scanConfig.preResolvedUp}
+      />
+    </div>
+    <div class="text-field">
+      <label for="spoof-mac" class="label">Spoof MAC (--spoof-mac)</label>
+      <input
+        id="spoof-mac"
+        type="text"
+        class="input"
+        placeholder="AA:BB:CC:DD:EE:FF or random"
+        bind:value={scanConfig.spoofMac}
       />
     </div>
   </div>

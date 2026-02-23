@@ -8,6 +8,7 @@
   import DiscoveryConfig from "./DiscoveryConfig.svelte";
   import ScriptConfig from "./ScriptConfig.svelte";
   import AdvancedOptions from "./AdvancedOptions.svelte";
+  import WatchConfig from "./WatchConfig.svelte";
   import ScanActions from "./ScanActions.svelte";
   import { scanConfig } from "../../stores/scanConfig.svelte";
   import { privileges } from "../../stores/privileges.svelte";
@@ -34,6 +35,7 @@
     <DiscoveryConfig />
     <ScriptConfig />
     <AdvancedOptions />
+    <WatchConfig />
   </div>
   {#if showPrivilegeWarning}
     <div class="privilege-warning">

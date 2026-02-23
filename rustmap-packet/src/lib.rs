@@ -27,7 +27,7 @@ pub use capture::{
     udp_fixed_port_bpf_filter,
 };
 pub use fragment::fragment_ipv4_packet;
-pub use platform::{create_capture, create_sender};
+pub use platform::{create_capture, create_sender, create_sender_with_options};
 #[cfg(windows)]
 pub use privilege::npcap_installed;
 pub use privilege::{PacketError, PrivilegeLevel, check_privileges};

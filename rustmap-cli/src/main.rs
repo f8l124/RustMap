@@ -396,6 +396,13 @@ async fn main() -> Result<()> {
         vec![]
     };
 
+    // Parse spoof MAC
+    let spoof_mac = if let Some(ref mac_str) = args.spoof_mac {
+        Some(parse_mac_address(mac_str)?)
+    } else {
+        None
+    };
+
     // Query learned timing parameters from historical data
     let (learned_rto, learned_cwnd, learned_ss, learned_retries) =
         if !args.no_db && !args.no_adaptive && !targets.is_empty() {
@@ -486,6 +493,9 @@ async fn main() -> Result<()> {
         pre_resolved_up,
         proxy,
         mtu_discovery: args.mtu_discovery,
+        ip_ttl: args.ttl,
+        badsum: args.badsum,
+        spoof_mac,
     };
 
     // MTU discovery requires raw sockets for ICMP
@@ -1140,6 +1150,31 @@ fn parse_decoys(spec: &str, scan_type: ScanType) -> Result<Vec<std::net::IpAddr>
     Ok(decoys)
 }
 
+/// Parse a MAC address string into 6 bytes.
+/// Accepts "AA:BB:CC:DD:EE:FF", "AA-BB-CC-DD-EE-FF", or "random".
+fn parse_mac_address(s: &str) -> Result<[u8; 6]> {
+    let s = s.trim();
+    if s.eq_ignore_ascii_case("random") {
+        use rand::Rng;
+        let mut mac = [0u8; 6];
+        rand::thread_rng().fill(&mut mac);
+        mac[0] &= 0xFE; // unicast
+        mac[0] |= 0x02; // locally administered
+        return Ok(mac);
+    }
+    let sep = if s.contains(':') { ':' } else { '-' };
+    let parts: Vec<&str> = s.split(sep).collect();
+    if parts.len() != 6 {
+        bail!("invalid MAC address: expected 6 hex octets separated by ':' or '-'");
+    }
+    let mut mac = [0u8; 6];
+    for (i, part) in parts.iter().enumerate() {
+        mac[i] = u8::from_str_radix(part, 16)
+            .with_context(|| format!("invalid hex octet in MAC address: '{part}'"))?;
+    }
+    Ok(mac)
+}
+
 /// Save the scan result to the database. Returns the scan ID if successful.
 pub(crate) fn save_scan_to_db(
     result: &rustmap_types::ScanResult,
@@ -1604,6 +1639,13 @@ async fn resume_scan(scan_id: &str) -> Result<()> {
         pre_resolved_up: vec![],
         proxy: None,
         mtu_discovery: resume_args.mtu_discovery,
+        ip_ttl: resume_args.ttl,
+        badsum: resume_args.badsum,
+        spoof_mac: if let Some(ref mac_str) = resume_args.spoof_mac {
+            parse_mac_address(mac_str).ok()
+        } else {
+            None
+        },
     };
 
     // Run streaming scan for remaining targets
@@ -2212,6 +2254,9 @@ mod tests {
             listen: "127.0.0.1:8080".into(),
             api_key: None,
             self_test: false,
+            spoof_mac: None,
+            ttl: None,
+            badsum: false,
         }
     }
 

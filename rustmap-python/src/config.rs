@@ -234,6 +234,9 @@ impl PyScanConfig {
             pre_resolved_up: vec![],
             proxy,
             mtu_discovery: false,
+            ip_ttl: None,
+            badsum: false,
+            spoof_mac: None,
         })
     }
 }

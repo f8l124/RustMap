@@ -5,6 +5,20 @@
   import ResultsPanel from "../results/ResultsPanel.svelte";
   import EmptyState from "../results/EmptyState.svelte";
   import { scanState } from "../../stores/scanState.svelte";
+  import { scanConfig } from "../../stores/scanConfig.svelte";
+  import { startScan } from "../../tauri/commands";
+  import { parseError } from "../../utils/errorParser";
+
+  async function retryLastScan() {
+    scanState.dismissError();
+    scanState.onStarting();
+    try {
+      await startScan(scanConfig.config);
+    } catch (e) {
+      const { message, kind } = parseError(e);
+      scanState.onScanError(message, kind);
+    }
+  }
 
   const errorConfig = $derived.by(() => {
     switch (scanState.errorKind) {
@@ -57,7 +71,10 @@
           {/if}
         </div>
       </div>
-      <button class="error-dismiss" onclick={() => scanState.dismissError()} title="Dismiss">{"\u2715"}</button>
+      <div class="error-actions">
+        <button class="error-retry" onclick={retryLastScan} title="Retry scan">Retry</button>
+        <button class="error-dismiss" onclick={() => scanState.dismissError()} title="Dismiss">{"\u2715"}</button>
+      </div>
     </div>
   {/if}
   {#if scanState.logEntries.length > 0}
@@ -145,6 +162,29 @@
     font-size: 12px;
     color: var(--text-secondary);
     margin-top: 2px;
+  }
+
+  .error-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    flex-shrink: 0;
+  }
+
+  .error-retry {
+    background: none;
+    border: 1px solid currentColor;
+    border-radius: var(--radius-sm);
+    color: inherit;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 2px 8px;
+    opacity: 0.8;
+  }
+
+  .error-retry:hover {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.05);
   }
 
   .error-dismiss {

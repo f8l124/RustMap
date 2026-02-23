@@ -1,8 +1,9 @@
-import type { ScanHistoryEntry } from "../types";
-import { clearScanHistory } from "../tauri/commands";
+import type { CheckpointInfo, ScanHistoryEntry } from "../types";
+import { clearScanHistory, listCheckpoints } from "../tauri/commands";
 
 class ScanHistoryStore {
   entries = $state<ScanHistoryEntry[]>([]);
+  checkpoints = $state<CheckpointInfo[]>([]);
 
   set(entries: ScanHistoryEntry[]) {
     this.entries = entries;
@@ -24,11 +25,31 @@ class ScanHistoryStore {
   }
 
   get latest(): ScanHistoryEntry | null {
-    return this.entries.length > 0 ? this.entries[this.entries.length - 1]! : null;
+    return this.entries.length > 0 ? this.entries[0]! : null;
   }
 
   getById(scanId: string): ScanHistoryEntry | undefined {
     return this.entries.find((e) => e.scan_id === scanId);
+  }
+
+  hasCheckpoint(scanId: string): boolean {
+    return this.checkpoints.some((cp) => cp.scan_id === scanId);
+  }
+
+  getCheckpoint(scanId: string): CheckpointInfo | undefined {
+    return this.checkpoints.find((cp) => cp.scan_id === scanId);
+  }
+
+  async loadCheckpoints(): Promise<void> {
+    try {
+      this.checkpoints = await listCheckpoints();
+    } catch (err) {
+      console.error("Failed to load checkpoints:", err);
+    }
+  }
+
+  removeCheckpoint(scanId: string) {
+    this.checkpoints = this.checkpoints.filter((cp) => cp.scan_id !== scanId);
   }
 }
 

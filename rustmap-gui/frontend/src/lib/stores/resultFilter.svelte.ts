@@ -72,7 +72,7 @@ class ResultFilterStore {
       // No state filters — default to showing only open ports.
       // Users can click Closed/Filtered chips to see those states.
       ports = ports.filter(
-        (p) => p.state === "open" || p.state === "open|filtered",
+        (p) => p.state === "open" || p.state === "openfiltered",
       );
     }
 
@@ -120,7 +120,9 @@ class ResultFilterStore {
         const start = parseInt(startStr!, 10);
         const end = parseInt(endStr!, 10);
         if (!isNaN(start) && !isNaN(end)) {
-          for (let p = start; p <= end && p <= 65535; p++) {
+          const lo = Math.max(1, start);
+          const hi = Math.min(65535, end);
+          for (let p = lo; p <= hi; p++) {
             ports.add(p);
           }
         }

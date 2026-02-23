@@ -668,6 +668,62 @@ fn ipv4_checksum(header: &[u8]) -> u16 {
     !sum as u16
 }
 
+/// Patch the IP TTL (IPv4) or Hop Limit (IPv6) in a raw IP packet in-place.
+/// Recalculates the IPv4 header checksum after patching.
+pub fn patch_ip_ttl(packet: &mut [u8], ttl: u8) {
+    if packet.is_empty() {
+        return;
+    }
+    let version = packet[0] >> 4;
+    if version == 4 && packet.len() >= 20 {
+        // IPv4: TTL is byte 8
+        packet[8] = ttl;
+        // Recompute header checksum
+        let ihl = (packet[0] & 0x0F) as usize * 4;
+        let hdr_len = ihl.min(packet.len());
+        packet[10] = 0;
+        packet[11] = 0;
+        let cksum = ipv4_checksum(&packet[..hdr_len]);
+        packet[10] = (cksum >> 8) as u8;
+        packet[11] = (cksum & 0xff) as u8;
+    } else if version == 6 && packet.len() >= 8 {
+        // IPv6: Hop Limit is byte 7
+        packet[7] = ttl;
+    }
+}
+
+/// Corrupt the transport-layer checksum in a raw IP packet (for --badsum).
+/// XORs the first checksum byte with 0xFF so the checksum is definitely wrong
+/// but the packet is still parseable by firewalls/IDS.
+pub fn corrupt_checksum(packet: &mut [u8]) {
+    if packet.is_empty() {
+        return;
+    }
+    let version = packet[0] >> 4;
+    if version == 4 && packet.len() >= 20 {
+        let ihl = (packet[0] & 0x0F) as usize * 4;
+        let proto = packet[9];
+        let cksum_offset = match proto {
+            6 => ihl + 16,  // TCP: checksum at offset 16 within TCP header
+            17 => ihl + 6,  // UDP: checksum at offset 6 within UDP header
+            _ => return,
+        };
+        if cksum_offset < packet.len() {
+            packet[cksum_offset] ^= 0xFF;
+        }
+    } else if version == 6 && packet.len() >= 40 {
+        let next_header = packet[6];
+        let cksum_offset = match next_header {
+            6 => 40 + 16,   // TCP
+            17 => 40 + 6,   // UDP
+            _ => return,
+        };
+        if cksum_offset < packet.len() {
+            packet[cksum_offset] ^= 0xFF;
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
