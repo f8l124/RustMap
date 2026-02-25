@@ -704,8 +704,8 @@ pub fn corrupt_checksum(packet: &mut [u8]) {
         let ihl = (packet[0] & 0x0F) as usize * 4;
         let proto = packet[9];
         let cksum_offset = match proto {
-            6 => ihl + 16,  // TCP: checksum at offset 16 within TCP header
-            17 => ihl + 6,  // UDP: checksum at offset 6 within UDP header
+            6 => ihl + 16, // TCP: checksum at offset 16 within TCP header
+            17 => ihl + 6, // UDP: checksum at offset 6 within UDP header
             _ => return,
         };
         if cksum_offset < packet.len() {
@@ -714,8 +714,8 @@ pub fn corrupt_checksum(packet: &mut [u8]) {
     } else if version == 6 && packet.len() >= 40 {
         let next_header = packet[6];
         let cksum_offset = match next_header {
-            6 => 40 + 16,   // TCP
-            17 => 40 + 6,   // UDP
+            6 => 40 + 16, // TCP
+            17 => 40 + 6, // UDP
             _ => return,
         };
         if cksum_offset < packet.len() {

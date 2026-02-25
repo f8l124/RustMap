@@ -115,7 +115,11 @@ impl GuiScanConfig {
         // Parse ports — use UDP-specific top ports when scan type is UDP
         let is_udp = self.scan_type == "U";
         let default_top_ports = |n: usize| {
-            if is_udp { top_udp_ports(n) } else { top_tcp_ports(n) }
+            if is_udp {
+                top_udp_ports(n)
+            } else {
+                top_tcp_ports(n)
+            }
         };
         let ports = if let Some(ref port_spec) = self.ports {
             if port_spec.trim().is_empty() {
@@ -379,7 +383,9 @@ impl GuiScanConfig {
                     let sep = if s.contains(':') { ':' } else { '-' };
                     let parts: Vec<&str> = s.split(sep).collect();
                     if parts.len() != 6 {
-                        return Err("spoof MAC must be 6 hex octets (AA:BB:CC:DD:EE:FF) or 'random'".into());
+                        return Err(
+                            "spoof MAC must be 6 hex octets (AA:BB:CC:DD:EE:FF) or 'random'".into(),
+                        );
                     }
                     let mut mac = [0u8; 6];
                     for (i, part) in parts.iter().enumerate() {

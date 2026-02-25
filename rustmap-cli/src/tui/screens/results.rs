@@ -305,10 +305,7 @@ fn render_detail(
     // GeoIP info
     if let Some(ref geo) = host.host.geo_info {
         lines.push(Line::from(""));
-        lines.push(Line::from(Span::styled(
-            "=== GeoIP ===",
-            theme::TEXT_BOLD,
-        )));
+        lines.push(Line::from(Span::styled("=== GeoIP ===", theme::TEXT_BOLD)));
         if let Some(ref country) = geo.country {
             let code = geo.country_code.as_deref().unwrap_or("");
             lines.push(Line::from(format!("  Country: {code} - {country}")));

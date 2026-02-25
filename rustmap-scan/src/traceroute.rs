@@ -95,7 +95,10 @@ pub async fn trace_route(
             });
             consecutive_timeouts += 1;
             if consecutive_timeouts >= MAX_CONSECUTIVE_TIMEOUTS {
-                warn!(ttl, "too many consecutive send failures, stopping traceroute");
+                warn!(
+                    ttl,
+                    "too many consecutive send failures, stopping traceroute"
+                );
                 break;
             }
             continue;
@@ -191,8 +194,7 @@ pub async fn trace_route(
         if consecutive_timeouts >= MAX_CONSECUTIVE_TIMEOUTS {
             warn!(
                 ttl,
-                consecutive_timeouts,
-                "too many consecutive timeouts, stopping traceroute"
+                consecutive_timeouts, "too many consecutive timeouts, stopping traceroute"
             );
             break;
         }

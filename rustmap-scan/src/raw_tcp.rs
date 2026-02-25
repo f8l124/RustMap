@@ -135,9 +135,10 @@ impl Scanner for RawTcpScanner {
         let timing = Arc::new(TimingController::new(params));
 
         // Create packet sender and capture on the same interface
-        let sender: Arc<dyn PacketSender> = Arc::from(
-            rustmap_packet::create_sender_with_options(target_ip, config.spoof_mac)?,
-        );
+        let sender: Arc<dyn PacketSender> = Arc::from(rustmap_packet::create_sender_with_options(
+            target_ip,
+            config.spoof_mac,
+        )?);
 
         // Use fixed-port BPF filter when source port is specified
         let bpf_filter = match config.source_port {
@@ -361,7 +362,12 @@ async fn send_loop(
         let send_result = if ip_ttl.is_some() || badsum {
             // Build packet manually to apply evasion overrides
             match rustmap_packet::build::build_tcp_packet(
-                src_ip, src_port, dst_ip, dst_port, rand_seq(), flags,
+                src_ip,
+                src_port,
+                dst_ip,
+                dst_port,
+                rand_seq(),
+                flags,
             ) {
                 Ok(mut pkt) => {
                     if let Some(ttl) = ip_ttl {
@@ -586,7 +592,12 @@ async fn check_timeouts(
 
             let send_result = if ip_ttl.is_some() || badsum {
                 match rustmap_packet::build::build_tcp_packet(
-                    src_ip, new_src_port, dst_ip, dst_port, rand_seq(), flags,
+                    src_ip,
+                    new_src_port,
+                    dst_ip,
+                    dst_port,
+                    rand_seq(),
+                    flags,
                 ) {
                     Ok(mut pkt) => {
                         if let Some(ttl) = ip_ttl {

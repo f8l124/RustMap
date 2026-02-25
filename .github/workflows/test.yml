@@ -216,6 +216,18 @@ jobs:
         working-directory: rustmap-gui/frontend
         run: npm run build
 
+      - name: Create dummy sidecar for Tauri build script
+        shell: bash
+        run: |
+          mkdir -p rustmap-gui/binaries
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            touch "rustmap-gui/binaries/rustmap-x86_64-pc-windows-msvc.exe"
+          elif [ "$RUNNER_OS" = "macOS" ]; then
+            touch "rustmap-gui/binaries/rustmap-aarch64-apple-darwin"
+          else
+            touch "rustmap-gui/binaries/rustmap-x86_64-unknown-linux-gnu"
+          fi
+
       - name: Test GUI crate
         # Skip on Windows: test binary links wpcap.dll which requires Npcap runtime
         if: runner.os != 'Windows'

@@ -344,9 +344,7 @@ pub async fn start_scan(
                     let host_ip = result.host.ip.to_string();
                     {
                         let store = state_clone.store.lock().await;
-                        if let Err(e) =
-                            store.update_checkpoint(&scan_id, &host_ip, &result)
-                        {
+                        if let Err(e) = store.update_checkpoint(&scan_id, &host_ip, &result) {
                             eprintln!("warning: failed to update checkpoint: {e}");
                         }
                     }
@@ -788,8 +786,7 @@ pub async fn check_vulns(
             continue;
         }
         let ip_str = host_result.host.ip.to_string();
-        let vuln_result =
-            rustmap_vuln::check_host_vulns(&store, &ip_str, &open_ports, min_cvss);
+        let vuln_result = rustmap_vuln::check_host_vulns(&store, &ip_str, &open_ports, min_cvss);
         if !vuln_result.port_vulns.is_empty() {
             results.push(vuln_result);
         }
@@ -884,8 +881,7 @@ pub async fn resume_scan(
             ),
             scan_type: scan_config.scan_type,
             start_time: Some(
-                std::time::UNIX_EPOCH
-                    + std::time::Duration::from_millis(cp.created_at),
+                std::time::UNIX_EPOCH + std::time::Duration::from_millis(cp.created_at),
             ),
             command_args: None,
             num_services: 0,
@@ -893,9 +889,7 @@ pub async fn resume_scan(
             post_script_results: vec![],
         };
         let finished_at = now_ms();
-        if let Err(e) =
-            store.save_scan(&scan_id, &result, cp.created_at, finished_at, None)
-        {
+        if let Err(e) = store.save_scan(&scan_id, &result, cp.created_at, finished_at, None) {
             eprintln!("warning: failed to save resumed scan: {e}");
         }
         let _ = store.delete_checkpoint(&scan_id);
@@ -977,9 +971,7 @@ pub async fn resume_scan(
                     let host_ip = result.host.ip.to_string();
                     {
                         let store = state_clone.store.lock().await;
-                        if let Err(e) =
-                            store.update_checkpoint(&scan_id, &host_ip, &result)
-                        {
+                        if let Err(e) = store.update_checkpoint(&scan_id, &host_ip, &result) {
                             eprintln!("warning: failed to update checkpoint: {e}");
                         }
                     }
@@ -1000,11 +992,8 @@ pub async fn resume_scan(
                     let finished_at = now_ms();
 
                     // Merge: checkpoint results + new results (IP dedup)
-                    let new_ips: std::collections::HashSet<std::net::IpAddr> = new_result
-                        .hosts
-                        .iter()
-                        .map(|h| h.host.ip)
-                        .collect();
+                    let new_ips: std::collections::HashSet<std::net::IpAddr> =
+                        new_result.hosts.iter().map(|h| h.host.ip).collect();
                     let mut merged = new_result.hosts;
                     for prev in &partial_results {
                         if !new_ips.contains(&prev.host.ip) {
@@ -1020,13 +1009,10 @@ pub async fn resume_scan(
                         .count();
                     new_result.hosts = merged;
                     new_result.num_services = num_services;
-                    new_result.total_duration = std::time::Duration::from_millis(
-                        finished_at.saturating_sub(created_at),
-                    );
-                    new_result.start_time = Some(
-                        std::time::UNIX_EPOCH
-                            + std::time::Duration::from_millis(created_at),
-                    );
+                    new_result.total_duration =
+                        std::time::Duration::from_millis(finished_at.saturating_sub(created_at));
+                    new_result.start_time =
+                        Some(std::time::UNIX_EPOCH + std::time::Duration::from_millis(created_at));
 
                     // Run scripts if enabled
                     let has_scripts =
@@ -1059,11 +1045,9 @@ pub async fn resume_scan(
                         match tokio::task::spawn_blocking(move || {
                             let mut result = new_result;
                             let dirs = rustmap_script::find_script_dirs();
-                            let mut discovery =
-                                rustmap_script::ScriptDiscovery::new(dirs);
+                            let mut discovery = rustmap_script::ScriptDiscovery::new(dirs);
                             let _ = discovery.discover();
-                            let mut resolved =
-                                discovery.resolve_scripts(&script_config.scripts);
+                            let mut resolved = discovery.resolve_scripts(&script_config.scripts);
                             for p in &custom_paths {
                                 let path = std::path::Path::new(p);
                                 if let Ok(meta) = discovery.parse_file(path) {
@@ -1071,18 +1055,12 @@ pub async fn resume_scan(
                                 }
                             }
                             if !resolved.is_empty() {
-                                let runner = rustmap_script::ScriptRunner::new(
-                                    script_config,
-                                    resolved,
-                                );
+                                let runner =
+                                    rustmap_script::ScriptRunner::new(script_config, resolved);
                                 if let Err(e) = runner.run_all(&mut result) {
-                                    eprintln!(
-                                        "warning: script execution error: {e}"
-                                    );
+                                    eprintln!("warning: script execution error: {e}");
                                 }
-                                rustmap_detect::enrich_os_from_scripts(
-                                    &mut result,
-                                );
+                                rustmap_detect::enrich_os_from_scripts(&mut result);
                             }
                             result
                         })
@@ -1117,21 +1095,13 @@ pub async fn resume_scan(
                     emit_log(&app, &scan_id, "Saving to database...");
                     {
                         let store = state_clone.store.lock().await;
-                        if let Err(e) = store.save_scan(
-                            &scan_id,
-                            &result,
-                            created_at,
-                            finished_at,
-                            None,
-                        ) {
-                            eprintln!(
-                                "warning: failed to save resumed scan: {e}"
-                            );
+                        if let Err(e) =
+                            store.save_scan(&scan_id, &result, created_at, finished_at, None)
+                        {
+                            eprintln!("warning: failed to save resumed scan: {e}");
                         }
                         if let Err(e) = store.delete_checkpoint(&scan_id) {
-                            eprintln!(
-                                "warning: failed to delete checkpoint: {e}"
-                            );
+                            eprintln!("warning: failed to delete checkpoint: {e}");
                         }
                     }
 
@@ -1255,9 +1225,7 @@ pub async fn start_watch(
             // Save to DB
             {
                 let store = state_clone.store.lock().await;
-                if let Err(e) =
-                    store.save_scan(&iter_id, &result, started_at, finished_at, None)
-                {
+                if let Err(e) = store.save_scan(&iter_id, &result, started_at, finished_at, None) {
                     eprintln!("warning: failed to save watch scan: {e}");
                 }
             }
@@ -1471,7 +1439,10 @@ mod tests {
     fn format_yaml_valid() {
         let result = mock_scan_result();
         let output = format_scan_result(&result, "yaml").unwrap();
-        assert!(output.contains("192.168.1.1"), "YAML should contain host IP");
+        assert!(
+            output.contains("192.168.1.1"),
+            "YAML should contain host IP"
+        );
     }
 
     #[test]
@@ -1485,7 +1456,10 @@ mod tests {
     fn format_html_valid() {
         let result = mock_scan_result();
         let output = format_scan_result(&result, "html").unwrap();
-        assert!(output.contains("<html") || output.contains("<table"), "HTML should contain HTML tags");
+        assert!(
+            output.contains("<html") || output.contains("<table"),
+            "HTML should contain HTML tags"
+        );
     }
 
     #[test]
